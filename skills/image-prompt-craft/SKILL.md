@@ -66,6 +66,11 @@ When a reference and the direction disagree on a dimension, the direction wins, 
 10. **Refining** is the same concept with better execution:
     - Start from the previous version's prompt and change only what the person, a deck comment or QA names. The person outranks everything.
     - **"Regenerate this, but …"** means: take that version's exact prompt from its record (`_records/generations/<id>.yaml` → `prompt`, or `history`), change only the words for what they named, and keep its inputs and model. Rewriting the rest makes everything else drift.
+    - **Replace, don't append.** Put the requested change where the old detail was and remove the old detail, so the prompt reads as if it had been written fresh with the new requirement. Keep every detail that didn't change; remove anything outdated or conflicting.
+      - Original: "A blue sea surrounded by palm trees." Change: turquoise sea with mountains.
+      - Right: "A turquoise sea surrounded by mountains."
+      - Wrong: "A turquoise sea surrounded by mountains, not a blue sea with palm trees."
+    - **Describe the outcome you want, not what it shouldn't be.** Don't add guardrails, negatives ("never grey", "not honeycombed") or repeated constraints by default. Add one only when there's evidence the model keeps drifting from that requirement or ignoring it, and say why in the instruction.
     - **Change one word, not the whole description.** Descriptors swing far: "porous, honeycombed" turned a rock into a sponge, and "rounded, lumpy" then turned it into a smooth ball. When a material or shape is off, look at the wording of the version the person liked and change the smallest thing.
     - When the model keeps snapping back to a reference, ask for **small relative changes** from the latest version ("about 10° lower than the previous frame, same direction"). Stop after three steps that don't move it, and suggest a different route.
     - If the person edited the prompt themselves, use it word for word.

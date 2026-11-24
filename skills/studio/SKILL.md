@@ -59,7 +59,7 @@ For deck deliverables, every new image is made **fresh** with `image_generate`, 
 
 **Never edit unless asked, and never rewrite a prompt that worked.** "Change X", "fix Y", "remove Z", "regenerate this but…" all mean:
 1. Take that version's exact prompt from its record (`history`, or `_records/generations/<id>.yaml` → `prompt`), with its inputs (packshots) and model.
-2. Change only the words for what the person named (add a line, swap a word, replace one sentence). Leave every other line exactly as it was.
+2. Change only the words for what the person named, by **replacing** the old detail where it is (swap the word, rewrite that one sentence), never by appending a correction or a "not …" line. The prompt must read as if written fresh with the new requirement; every other line stays exactly as it was. Describe what you want, not what it shouldn't be; add a negative only when the model keeps ignoring that point.
 3. Generate a new image with `image_generate` (a new version; the old one stays in history), then say in one line what you changed in the prompt.
 Write a new prompt from scratch only for a new direction, or when the person asks for one. Use `image_edit` only when the person explicitly says to edit that image.
 
