@@ -54,6 +54,19 @@ studio deck import acme <Slides link>      # deck text, notes and comments
 
 Run `studio drive index` again whenever the folder changes a lot. It only re-lists the files.
 
+## Keeping clients in sync across the team
+
+```sh
+studio client sync acme
+```
+
+Each client has one shared copy on the Shared Drive (`_client-packs/acme.zip`). Sync pulls it, merges it with yours, and pushes the result:
+- **Comments, approvals and history** (the `.jsonl` logs) always merge.
+- **A file only one person changed** takes that person's version.
+- **A file both people changed** is flagged. The other version is saved next to yours as `<file>.incoming`, and nothing is pushed until you've kept the right one and deleted the `.incoming` file.
+
+Images aren't in the shared copy: approved ones live in the client's Drive folder (`drive_save`), and product photos travel with the client.
+
 ## Read-only folders (e.g. working decks)
 
 Some material lives outside the Shared Drive, in folders the studio should only read. Working decks are the usual example:

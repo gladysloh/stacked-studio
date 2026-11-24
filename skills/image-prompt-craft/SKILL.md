@@ -4,7 +4,7 @@ description: Write the prompt an image model (for example Gemini "Nano Banana") 
 metadata:
   area: image
   version: "1.1.0"
-  tools: [image_generate, image_edit, client_context]
+  tools: [image_generate, image_edit, client_context, shot_library]
 ---
 
 # Image prompt craft
@@ -69,6 +69,8 @@ When a reference and the direction disagree on a dimension, the direction wins, 
     - If the person edited the prompt themselves, use it word for word.
 
 Worked prompts: [examples.md](references/examples.md).
+
+Name shots precisely with the **shot library**. `shot_library` (query or category) gives each angle, placement, pose, light, surface and motion entry with wording the model follows and its known problems. With an id it also returns the team's tagged example images: pass the best one as an input (role `reference` or `layout`, with a note saying what to take).
 
 Deeper notes from production work:
 - [gemini-prompt-best-practices.md](references/gemini-prompt-best-practices.md) — what Nano Banana honours and ignores, product-label limits, tested openers and negatives.

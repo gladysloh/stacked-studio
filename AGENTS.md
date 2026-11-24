@@ -6,7 +6,7 @@ stacked-studio is a local creative production toolkit: research, concepts, image
 
 1. **Find the capability.** Read `skills/studio/SKILL.md` first. It maps what the person wants to a skill. Then read that skill. Claude Code finds skills in `.claude/skills/` automatically. Other agents can call `studio_capabilities` to get the catalog, or a skill's full text by name.
 2. **Start where the person is.** A prompt → make the image. An image plus a change → edit it. Don't make anyone go through research, a brief or concepts unless they ask for them.
-3. **Client work:** call `client_context` first. Follow the **approved** rules, use **source** items as the client's facts, and treat **draft** and **unverified** items as hints. Without a client, work goes to `clients/_scratch/`.
+3. **Client work:** call `client_context` first. The client's **working deck** (Google Slides, linked in `client.yaml`) is the source of truth for deliverables, messaging and comments: re-sync it before deliverable work, and when a local file disagrees with it, the deck wins. Follow the **approved** rules, use **source** items as the client's facts, and treat **draft** and **unverified** items as hints. Without a client, work goes to `clients/_scratch/`.
 4. **Images only through the studio:** use `image_generate`, `image_edit`, `image_upscale` and `image_compare`. Never call image APIs directly or save images some other way, because only these tools record the history.
 5. **Approval is the person's decision.** Use `review` with approve or reject only when they say so.
 
@@ -24,7 +24,15 @@ stacked-studio is a local creative production toolkit: research, concepts, image
 | `history`, `review` | Every version of an image; approve, reject, rate, like, comment |
 | `drive_index`, `drive_fetch`, `drive_save` | The client's Google Drive folder: make it searchable, download a file once, save an image (link recorded) |
 | `deck_import` | Import or re-sync a Google Slides deck: text, notes, every comment thread |
+| `deck_import_file` | File a downloaded deck's (.pptx) images: asset slides → their deliverables, section mood/overview → the project's sections, the rest → library references |
 | `sheet_read`, `sheet_write` | Shot lists and batch inputs from Google Sheets; write status and links back |
+| `product_list`, `product_add` | The client's products: exact label text, photos and cutouts to use as `product` inputs |
+| `qa_basics`, `qa_record` | Measured checks (format, resolution, brand palette), and saving a creative-qa review (verdict computed by a fixed rule) |
+| `shot_library` | The shared vocabulary of angles, placements, poses, hands, lighting, surfaces, motion and framing, with the team's tagged examples |
+| `research_plan`, `image_search` | Targeted reference searches per subject (product, model, texture…) and shot type; optional image-search key (Brave or SerpAPI) |
+| `moodboard_save`, `reference_tag`, `pinterest_board` | Boards with downloaded references tagged by shot id; a public Pinterest board's pins (no login) |
+| `adapt_plan` | Per-size plan for adapts: pixels, safe box, archetype, and resize / crop / recompose / Figma layout |
+| `client_sync` | Two-way sync of a client with the team Shared Drive |
 | `media_run` | Optional local Python tools (cutout, palette, image_info) |
 
 ## Setup ("Set up this studio for me")
@@ -39,18 +47,17 @@ stacked-studio is a local creative production toolkit: research, concepts, image
 
 ## Clients (private: `clients/` is gitignored)
 
+The full layout and what each folder is for: `docs/client-folders.md`. In short:
+
 ```
-clients/<client>/client.yaml          name, links (Drive folder, guidelines, decks, Figma, Pinterest), defaults
-clients/<client>/brand.md             APPROVED brand rules only
-clients/<client>/knowledge/*.md       drafts and unverified notes (frontmatter status: draft | approved | unverified)
-clients/<client>/products/<p>/product.yaml   label text and cutouts (by sha)
-clients/<client>/references/, past-work/, research/<board>/, decks/<deck>/
-clients/<client>/projects/<project>/  project.yaml, brief.md, deliverables/<CODE>/, concepts/, generations/<id>.yaml, review.jsonl
+clients/<client>/client.yaml, brand/{brand.md, notes/, logos/}, products/{<p>/, _groups/}, library/{references, past-work, moodboards}, decks/, inbox/
+clients/<client>/projects/<project>/brief.md, <CODE>-<name>/{brief.md, references/, versions/, final/, concepts/}, _records/
 ```
 
-- You may read and write these files directly (briefs, concepts, knowledge drafts, moodboards). Never edit `generations/*.yaml`, because records are never changed, and only append to `review.jsonl` through `review`.
-- New brand facts go into `knowledge/` as drafts. Only the person promotes them to `brand.md`.
-- Images live in `.cache/media/` by hash. Share a client with `studio client export <client>`.
+- Briefs, brand rules, notes, concepts and moodboards are plain files: read and write them directly. Never edit `_records/` (records are never changed), and only add approvals through `review`.
+- New brand facts go into `brand/notes/` as drafts. Only the person promotes them to `brand/brand.md`.
+- Images live in `.cache/media/` by hash. The readable copies in client folders are rebuilt by `organise_folders`. Files people add themselves are never touched.
+- New images people drop in `inbox/` get filed with the `organise-inbox` skill.
 
 ## Cost
 Real providers cost money: roughly $0.04–0.15 per image, and more at 4K. Explore at 1K. Say the cost before making more than 2 images at once, or anything at 2K or 4K. A daily cap (`studio config daily_cap_usd`) stops runaway spending. Never raise it unless the person asks.
@@ -59,7 +66,8 @@ Real providers cost money: roughly $0.04–0.15 per image, and more at 4K. Explo
 1. **This repo is public.** Never put client names, briefs, brand material, images, keys or personal paths into tracked files. Run `npm run check:private` before any commit; it must print `check-private: clean`.
 2. **One core.** Every operation lives in `core/ops.mjs` and is shared by the MCP server, the CLI and the Workbench. Every model or API call goes through `core/providers/`. Python (`py/`) only does local media work: it never calls model APIs, and Node stores what it produces.
 3. **Adding a provider:** write a module in `core/providers/` and add it to `PROVIDERS` in `core/providers/index.mjs`. Nothing else changes.
-4. **Adding a capability:** a skill folder in `skills/` (or `pipelines/` for chains), with `name`, `description` and `metadata.area` and `metadata.tools`. Prefer a skill over a new tool. Add a tool only when an agent can't do the job with the existing ones.
-5. **Tests never make paid calls.** They use the test provider and fake servers: `npm test` and `cd py && uv run --group dev pytest`.
-6. Ask before pushing, publishing, adding a dependency, or anything that costs money. Commit only when asked.
-7. **Words for the person:** Image, Version, History, Refine, New direction, Approved, Rejected, Needs review. Don't use generation, lineage or hash.
+4. **Adding to the shot library:** an entry in `library/shots/<category>.yaml` (unique `id`, short concrete `prompt`, `search` terms). Example images never go in the repo: they're tagged references in client folders.
+5. **Adding a capability:** a skill folder in `skills/` (or `pipelines/` for chains), with `name`, `description` and `metadata.area` and `metadata.tools`. Prefer a skill over a new tool. Add a tool only when an agent can't do the job with the existing ones.
+6. **Tests never make paid calls.** They use the test provider and fake servers: `npm test` and `cd py && uv run --group dev pytest`.
+7. Ask before pushing, publishing, adding a dependency, or anything that costs money. Commit only when asked.
+8. **Words for the person:** Image, Version, History, Refine, New direction, Approved, Rejected, Needs review. Don't use generation, lineage or hash.

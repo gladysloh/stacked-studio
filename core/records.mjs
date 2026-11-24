@@ -5,16 +5,16 @@ import { StudioError } from './errors.mjs';
 import { appendJsonl, readJsonl, readYaml, writeYamlAtomic } from './fsutil.mjs';
 import { newId } from './ids.mjs';
 import { mediaPath } from './media.mjs';
-import { allProjects, projectDir } from './workspace.mjs';
+import { allProjects, layout } from './workspace.mjs';
 
 // Generation records: one YAML file per image/video version in projects/<p>/generations/<id>.yaml.
 // A record is written once and never edited; a change makes a new version that points at its parent.
 // Feedback and approvals go in projects/<p>/review.jsonl, append-only.
 
-export const REVIEW_ACTIONS = ['approve', 'reject', 'comment', 'rate', 'like', 'pick', 'compare', 'save'];
+export const REVIEW_ACTIONS = ['approve', 'reject', 'comment', 'rate', 'like', 'pick', 'compare', 'save', 'check'];
 
 export function writeGeneration(rec) {
-  const file = path.join(projectDir(rec.client, rec.project), 'generations', `${rec.id}.yaml`);
+  const file = path.join(layout.generations(rec.client, rec.project), `${rec.id}.yaml`);
   if (fs.existsSync(file)) throw new StudioError(`Record ${rec.id} already exists; records are never overwritten.`);
   writeYamlAtomic(file, rec);
   index.set(rec.id, file);
@@ -29,7 +29,7 @@ const index = new Map();
 function scan() {
   index.clear();
   for (const p of allProjects()) {
-    const g = path.join(p.dir, 'generations');
+    const g = layout.generations(p.client, p.project);
     if (!fs.existsSync(g)) continue;
     for (const n of fs.readdirSync(g)) if (n.endsWith('.yaml')) index.set(n.slice(0, -5), path.join(g, n));
   }
@@ -55,9 +55,10 @@ export function listGenerations({ client, project, limit = 50, includeTests = tr
   scan();
   const out = [];
   for (const [, file] of index) {
+    // …/clients/<client>/projects/<project>/_records/generations/<id>.yaml
     const rel = file.split(path.sep);
-    const c = rel[rel.length - 5];
-    const p = rel[rel.length - 3];
+    const c = rel[rel.length - 6];
+    const p = rel[rel.length - 4];
     if (client && c !== client) continue;
     if (project && p !== project) continue;
     const g = readYaml(file, null);
@@ -82,7 +83,7 @@ export function findByRequestId(client, project, requestId) {
 
 // ---- review ----
 
-const reviewFile = (client, project) => path.join(projectDir(client, project), 'review.jsonl');
+const reviewFile = (client, project) => layout.review(client, project);
 
 export function addReview({ target, output = 0, action, value = null, note = null }) {
   if (!REVIEW_ACTIONS.includes(action)) throw new StudioError(`Unknown review action "${action}". Use one of: ${REVIEW_ACTIONS.join(', ')}.`);
@@ -112,7 +113,14 @@ export function withReview(g) {
       status: decision ? (decision.action === 'approve' ? 'approved' : 'rejected') : 'new',
       rating: mine.filter((e) => e.action === 'rate').at(-1)?.value ?? null,
       liked: mine.some((e) => e.action === 'like'),
-      comments: mine.filter((e) => e.action === 'comment').map((e) => ({ at: e.at, author: e.author, note: e.note })),
+      comments: mine.filter((e) => e.action === 'comment' && !e.value?.check).map((e) => ({ at: e.at, author: e.author, note: e.note })),
+      check: (() => {
+        const c = mine.filter((e) => e.action === 'check' || (e.action === 'comment' && e.value?.check)).at(-1);
+        if (!c) return null;
+        // Checks migrated from New Gen Studio were "pass"/"issues" with a list; new ones use the rubric.
+        if (c.action === 'comment') return { at: c.at, author: c.author, verdict: c.value.check === 'pass' ? 'meets_brief' : 'needs_changes', summary: c.note, issues: c.value.issues ?? [], legacy: true };
+        return { at: c.at, author: c.author, summary: c.note, ...c.value };
+      })(),
     };
   });
   return { ...g, outputs };

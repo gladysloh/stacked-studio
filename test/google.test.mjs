@@ -36,7 +36,7 @@ function fakeGoogle() {
       const parent = qy.match(/'([^']+)' in parents/)[1];
       const name = qy.match(/name = '([^']+)'/)?.[1];
       let list = Object.values(files).filter((f) => f.parents?.includes(parent));
-      if (name) list = list.filter((f) => f.name === name && f.mimeType === FOLDER);
+      if (name) list = list.filter((f) => f.name === name && (!qy.includes('mimeType') || f.mimeType === FOLDER));
       return { json: { files: list } };
     }
     if (p === '/drive/v3/files' && req.method === 'POST') {
@@ -48,9 +48,20 @@ function fakeGoogle() {
       const text = body.toString('latin1');
       const meta = JSON.parse(text.match(/\r\n\r\n(\{.*?\})\r\n/s)[1]);
       const id = `upload${String(++n).padStart(6, '0')}`;
-      files[id] = { id, name: meta.name, mimeType: 'image/png', parents: meta.parents, description: meta.description, webViewLink: `https://drive.google.com/file/d/${id}/view` };
+      // The media part: after the second part's blank line, up to the closing boundary.
+      const boundary = req.headers['content-type'].match(/boundary=(\S+)/)[1];
+      const second = body.indexOf(Buffer.from(`--${boundary}`), 10);
+      const start = body.indexOf(Buffer.from('\r\n\r\n'), second) + 4;
+      const data = body.subarray(start, body.lastIndexOf(Buffer.from(`\r\n--${boundary}--`)));
+      files[id] = { id, name: meta.name, mimeType: 'image/png', parents: meta.parents, description: meta.description, webViewLink: `https://drive.google.com/file/d/${id}/view`, data };
       state.uploads.push({ id, meta, bytes: body.length });
       return { json: files[id] };
+    }
+    const up = p.match(/^\/upload\/drive\/v3\/files\/([^/]+)$/);
+    if (up && req.method === 'PATCH') {
+      files[up[1]].data = body;
+      state.updates = (state.updates ?? 0) + 1;
+      return { json: files[up[1]] };
     }
     const fm = p.match(/^\/drive\/v3\/files\/([^/]+)(\/export|\/comments)?$/);
     if (fm) {
@@ -58,19 +69,19 @@ function fakeGoogle() {
       if (!f) return { status: 404, json: { error: { message: 'File not found' } } };
       if (fm[2] === '/comments') {
         return { json: { comments: [
-          { id: 'cm1', author: { displayName: 'Client' }, content: 'EPS005: make the jar bigger', resolved: false, createdTime: '2026-11-01T00:00:00Z', replies: [{ id: 'r1', author: { displayName: 'Studio' }, content: 'Will do' }] },
+          { id: 'cm1', author: { displayName: 'Client' }, content: 'ABC005: make the jar bigger', resolved: false, createdTime: '2026-11-01T00:00:00Z', replies: [{ id: 'r1', author: { displayName: 'Studio' }, content: 'Will do' }] },
           { id: 'cm2', author: { displayName: 'Client' }, content: 'Love this', quotedFileContent: { value: 'Golden hour' }, resolved: true },
         ] } };
       }
       if (fm[2] === '/export') return { raw: Buffer.from('%PDF-1.4 fake'), type: 'application/pdf' };
-      if (url.searchParams.get('alt') === 'media') return { raw: f.id === 'serumpng00001' ? png : Buffer.from('PK fake zip'), type: f.mimeType };
+      if (url.searchParams.get('alt') === 'media') return { raw: f.data ?? (f.id === 'serumpng00001' ? png : Buffer.from('PK fake zip')), type: f.mimeType };
       return { json: { ...f, modifiedTime: '2026-11-01T00:00:00Z', headRevisionId: 'rev9', webViewLink: f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view` } };
     }
     if (p === '/v1/presentations/deck000000001') {
       const shape = (text) => ({ shape: { text: { textElements: [{ textRun: { content: text } }] } } });
       return { json: { title: '[INT] Acme Spring Deck', slides: [
         { objectId: 'p1', pageElements: [shape('Spring 2027\n'), shape('Overview')] },
-        { objectId: 'p2', pageElements: [shape('EPS005 Night serum hero\n'), shape('Golden hour, warm amber light')], slideProperties: { notesPage: { pageElements: [shape('Client loves amber')] } } },
+        { objectId: 'p2', pageElements: [shape('ABC005 Night serum hero\n'), shape('Golden hour, warm amber light')], slideProperties: { notesPage: { pageElements: [shape('Client loves amber')] } } },
       ] } };
     }
     if (p === '/v4/spreadsheets/sheet00000001') return { json: { sheets: [{ properties: { title: 'Shots' } }] } };
@@ -199,11 +210,11 @@ test('slides: deck import writes slides, notes and comments; re-import reports n
   assert.equal(r.comments, 2);
   assert.equal(r.open, 1);
   assert.equal(r.new_comments, 2);
-  assert.deepEqual(r.codes, ['EPS005']);
+  assert.deepEqual(r.codes, ['ABC005']);
   const dir = path.join(t.ws, 'clients', slug, 'decks', 'acme-spring-deck');
   assert.match(fs.readFileSync(path.join(dir, 'slides.md'), 'utf8'), /Speaker notes: Client loves amber/);
   const comments = fs.readFileSync(path.join(dir, 'comments.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
-  assert.equal(comments[0].asset_code, 'EPS005');
+  assert.equal(comments[0].asset_code, 'ABC005');
   assert.equal(comments[0].replies[0].body, 'Will do');
   const again = await runOp('deck_import', { client: slug, deck: 'deck000000001' });
   assert.equal(again.new_comments, 0);
@@ -263,4 +274,61 @@ test('read-only folder: indexed and fetched, never saved to; decks re-sync from 
   const again = await runOp('deck_import', { client: slug });
   assert.equal(again.decks.length, 1);
   assert.equal(again.decks[0].new_comments, 0);
+});
+
+test('client sync: two teammates through the Shared Drive; one-sided edits merge, two-sided edits are flagged', async () => {
+  await signedIn();
+  const share = await import('../core/share.mjs');
+  const dir = path.join(t.dir, 'pack');
+  fs.mkdirSync(dir);
+  fs.writeFileSync(path.join(dir, 'team.yaml'), 'name: Team\ngoogle:\n  root_folder_id: teamroot00001\n');
+  const wsA = t.ws;
+  const wsB = path.join(t.dir, 'wsB');
+  const as = (w) => (process.env.STACKED_WORKSPACE = w);
+  const ws = await import('../core/workspace.mjs');
+  const { runOp } = await import('../core/ops.mjs');
+  const brand = (w) => path.join(w, 'clients', 'acme', 'brand', 'brand.md');
+
+  // A makes the client and the first shared copy.
+  as(wsA);
+  share.importTeam(dir);
+  ws.createClient('Acme');
+  const first = await runOp('client_sync', { client: 'acme' });
+  assert.match(first.message, /first shared copy/);
+
+  // B imports it from the Drive link and syncs (nothing to change).
+  as(wsB);
+  share.importTeam(dir);
+  const r = await cliAsync(['client', 'import', first.pushed.link], { ...t.env, STACKED_WORKSPACE: wsB });
+  assert.equal(r.code, 0, r.stderr);
+  const b1 = await runOp('client_sync', { client: 'acme' });
+  assert.deepEqual(b1.pulled.conflicts, []);
+
+  // B edits brand.md; A adds a knowledge note. Both sync: each gets the other's change.
+  fs.appendFileSync(brand(wsB), '\nFrom B: amber only.\n');
+  await runOp('client_sync', { client: 'acme' });
+  as(wsA);
+  fs.writeFileSync(path.join(wsA, 'clients/acme/brand/notes/tone.md'), '---\nstatus: draft\n---\nCalm.\n');
+  const a2 = await runOp('client_sync', { client: 'acme' });
+  assert.equal(a2.pulled.updated, 1);
+  assert.deepEqual(a2.pulled.conflicts, []);
+  assert.match(fs.readFileSync(brand(wsA), 'utf8'), /From B/);
+  as(wsB);
+  const b2 = await runOp('client_sync', { client: 'acme' });
+  assert.equal(b2.pulled.added, 1);
+  assert.ok(fs.existsSync(path.join(wsB, 'clients/acme/brand/notes/tone.md')));
+
+  // Both edit brand.md: flagged, nothing pushed, nothing overwritten.
+  fs.appendFileSync(brand(wsB), '\nB again\n');
+  await runOp('client_sync', { client: 'acme' });
+  as(wsA);
+  fs.appendFileSync(brand(wsA), '\nA too\n');
+  const updatesBefore = g.state.updates;
+  const a3 = await runOp('client_sync', { client: 'acme' });
+  assert.equal(a3.pulled.conflicts.length, 1);
+  assert.equal(a3.pushed, null);
+  assert.equal(g.state.updates, updatesBefore);
+  assert.match(fs.readFileSync(brand(wsA), 'utf8'), /A too/);
+  assert.ok(fs.existsSync(brand(wsA) + '.incoming'));
+  as(wsA);
 });

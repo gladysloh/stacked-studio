@@ -149,3 +149,15 @@ export async function downloadTo(ref, dest) {
   fs.writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
   return { file: dest, name: meta.name, drive_id: meta.id };
 }
+
+/** Finds a file by exact name in a folder. */
+export async function findByName(parentId, name) {
+  const query = encodeURIComponent(`'${q(parentId)}' in parents and name = '${q(name)}' and trashed = false`);
+  const r = await gfetch(`${hosts().drive}/files?q=${query}&fields=files(${FIELDS})&${ALL}`);
+  return r.files?.[0] ?? null;
+}
+
+/** Replaces a file's content, keeping its id and link (Drive keeps the old version in its history). */
+export async function updateFile(id, { data, mime }) {
+  return gfetch(`${hosts().upload}/files/${id}?uploadType=media&supportsAllDrives=true&fields=${FIELDS}`, { method: 'PATCH', headers: { 'content-type': mime }, body: data, retry: false });
+}

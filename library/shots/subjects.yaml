@@ -1,0 +1,81 @@
+# What to research for each kind of subject. {subject} = e.g. "amber serum bottle", {category} = e.g. "skincare".
+subjects:
+  - id: product
+    name: Product (packshot, still life, campaign hero)
+    focus: [angle.three-quarter, angle.low-hero, angle.top-down, placement.floating, placement.podium, placement.stepped-levels, placement.diagonal-cascade, placement.ingredient-story, light.backlit-glow, light.hard-sun, light.specular-strip, surface.water, surface.plaster, surface.fabric, motion.splash, motion.floating-ingredients, motion.smear, framing.negative-space]
+    categories: [angle, placement, lighting, surface, motion, framing]
+    search:
+      - "{subject} product photography"
+      - "{category} product still life"
+      - "dynamic {category} product layout"
+      - "creative {category} product photography composition"
+      - "{category} campaign key visual"
+      - "{category} product photography podium"
+      - "{category} product group shot"
+  - id: product_with_model
+    name: Product with a model (in use, held, applied)
+    focus: [pose.product-at-cheek, pose.applying, pose.mirror-routine, hands.hold-hero, hands.fingertip-hold, hands.dropper, angle.three-quarter, placement.copy-space, light.soft-window, light.golden-hour, framing.negative-space]
+    categories: [pose, hands, angle, placement, lighting, framing]
+    search:
+      - "{category} model holding product campaign"
+      - "{category} beauty campaign model with product"
+      - "hand holding {subject} product photography"
+      - "{category} product application close up"
+  - id: model
+    name: Model / talent (portrait, beauty, lifestyle)
+    focus: [pose.beauty-closeup, pose.hand-to-face, pose.over-shoulder, pose.profile-gaze, pose.eyes-closed, pose.candid-laugh, light.soft-window, light.backlit-glow, light.golden-hour, framing.extreme-closeup, framing.negative-space, surface.fabric]
+    categories: [pose, framing, lighting, surface]
+    search:
+      - "{category} beauty portrait campaign"
+      - "{category} model pose editorial"
+      - "beauty close up skin glow photography"
+      - "{category} lifestyle campaign photography"
+  - id: hands
+    name: Hands only (hand model, in-use details)
+    focus: [hands.hold-hero, hands.fingertip-hold, hands.cupped-offering, hands.pump-dispense, hands.dropper, hands.swatch-on-hand, hands.reach-in, framing.tight-crop, light.soft-window, surface.botanical]
+    categories: [hands, framing, lighting, surface]
+    search:
+      - "hand model {category} product photography"
+      - "hands holding {subject} minimal"
+      - "{category} swatch on hand photography"
+  - id: texture
+    name: Texture (cream, gel, serum, powder, swatch)
+    focus: [motion.smear, motion.drip, motion.bubbles, motion.powder-burst, hands.swatch-on-hand, framing.extreme-closeup, light.backlit-glow, light.caustics, surface.water, surface.glass-acrylic]
+    categories: [motion, framing, lighting, surface]
+    search:
+      - "{category} texture swatch photography"
+      - "cream smear texture macro"
+      - "serum drop texture photography"
+      - "{category} texture background campaign"
+  - id: food_beverage
+    name: Food and beverage
+    focus: [angle.high-45, angle.top-down, placement.scattered-flat-lay, placement.ingredient-story, placement.floating, motion.splash, motion.pour, motion.condensation, motion.floating-ingredients, light.backlit-glow, light.golden-hour, surface.wood, surface.ice]
+    categories: [angle, placement, motion, surface, lighting, framing]
+    search:
+      - "{subject} food photography"
+      - "{category} beverage splash photography"
+      - "{subject} flat lay styling"
+      - "{category} advertising photography dynamic"
+  - id: fashion
+    name: Fashion and accessories
+    focus: [pose.full-body, pose.walking, pose.over-shoulder, placement.flat-lay-grid, framing.wide-environmental, framing.tight-crop, light.hard-sun, surface.plaster, motion.fabric-flow]
+    categories: [pose, framing, lighting, surface, placement]
+    search:
+      - "{category} fashion campaign editorial"
+      - "{subject} still life accessories photography"
+      - "{category} lookbook pose"
+  - id: device
+    name: Tech and devices
+    focus: [angle.three-quarter, angle.low-hero, angle.profile, placement.floating, placement.reflection, light.low-key, light.specular-strip, light.color-gel, surface.mirror, surface.glass-acrylic]
+    categories: [angle, placement, lighting, surface, framing]
+    search:
+      - "{subject} product render hero"
+      - "{category} device product photography dark"
+      - "{category} tech product floating layout"
+  - id: interior
+    name: Interiors and spaces
+    focus: [framing.wide-environmental, angle.front-straight, light.soft-window, light.hard-sun, light.golden-hour, surface.plaster, surface.wood]
+    categories: [angle, framing, lighting, surface]
+    search:
+      - "{subject} interior photography"
+      - "{category} interior styling editorial"

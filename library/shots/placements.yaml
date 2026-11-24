@@ -1,0 +1,165 @@
+category: placement
+name: Placements and layouts
+entries:
+  - id: placement.centered-hero
+    name: Centred hero
+    aliases: [single hero, symmetrical, centered product]
+    applies: [product, device]
+    prompt: "One product dead centre, symmetrical composition, generous even space around it."
+    use_when: Packshots, minimal premium visuals, square formats.
+    watch_out: Leaves no room for copy in wide formats — plan the adapts.
+    search: ["minimal {category} product centered composition"]
+    related: [angle.front-straight, surface.seamless-color]
+  - id: placement.copy-space
+    name: Product to one side, copy space
+    aliases: [rule of thirds, negative space for headline, offset]
+    applies: [product, product_with_model, device]
+    prompt: "Product placed on the right third, the left half of the frame left clean and uncluttered for a headline."
+    use_when: Key visuals that carry a headline, banners, any layout with copy.
+    watch_out: Say which side and how much space; models otherwise drift back to the centre.
+    search: ["{category} ad layout product with copy space", "{category} campaign key visual negative space"]
+    related: [framing.negative-space, placement.centered-hero]
+  - id: placement.podium
+    name: On a podium or plinth
+    aliases: [pedestal, plinth, display block, stage]
+    applies: [product, device]
+    prompt: "Product standing on a simple cylindrical plinth, the plinth's top edge sharp, a soft contact shadow where they meet."
+    use_when: Premium hero shots, launches, single-product focus with a sense of occasion.
+    watch_out: The plinth can dominate — keep it in the brand palette and lower than the product's height.
+    search: ["{category} product podium photography", "{category} product on plinth minimal"]
+    related: [angle.low-hero, placement.stepped-levels]
+  - id: placement.stepped-levels
+    name: Stepped risers
+    aliases: [staggered heights, levels, stairs, blocks]
+    applies: [product]
+    prompt: "Products on blocks of different heights, stepping up from front-left to back-right, each fully visible."
+    use_when: Ranges of 2–5 products where each needs its own moment.
+    watch_out: Models merge products and blocks — give each product its own block and position in words.
+    search: ["{category} products on different height blocks", "{category} range stepped display photography"]
+    related: [placement.lineup-row, surface.glass-acrylic]
+  - id: placement.lineup-row
+    name: Line-up / range row
+    aliases: [range shot, family shot, row]
+    applies: [product]
+    prompt: "Products standing side by side on one baseline, evenly spaced, labels all facing the camera, ordered by size."
+    use_when: Range or collection shots, e-commerce bundles.
+    watch_out: More than 4–5 products and labels start to garble; composite the range if needed.
+    search: ["{category} product range lineup photography", "{category} collection family shot"]
+    related: [angle.front-straight, light.top-softbox]
+  - id: placement.diagonal-cascade
+    name: Diagonal cascade
+    aliases: [descending diagonal, leading line]
+    applies: [product, food_beverage]
+    prompt: "Products arranged along a descending diagonal from upper left to lower right, each slightly overlapping the next without hiding its label."
+    use_when: Energy and flow in a group; leads the eye to the hero at the end.
+    watch_out: Overlap hides labels — state which product is in front.
+    search: ["{category} product diagonal composition", "dynamic {category} product arrangement"]
+    related: [angle.high-45, placement.triangle-group]
+  - id: placement.triangle-group
+    name: Triangle group
+    aliases: [cluster of three, pyramid composition]
+    applies: [product, food_beverage]
+    prompt: "Three products in a triangle: the tallest at the back centre, the other two in front at left and right, a little turned towards each other."
+    use_when: Trios and duos-plus-hero; stable, classic group shots.
+    watch_out: Back product's label gets hidden; turn front products outward a touch.
+    search: ["{category} three product group composition", "trio product still life {category}"]
+    related: [placement.hero-with-supporting]
+  - id: placement.hero-with-supporting
+    name: Hero with supporting cast
+    aliases: [hero and range, foreground hero, depth layering]
+    applies: [product]
+    prompt: "The hero product sharp in the foreground; the rest of the range behind it, softly out of focus."
+    use_when: Launching one product within a range.
+    watch_out: Background products still need recognisable shapes and colours.
+    search: ["{category} hero product with range in background"]
+    related: [angle.three-quarter, framing.shallow-depth]
+  - id: placement.flat-lay-grid
+    name: Knolled grid
+    aliases: [knolling, organised flat lay, grid]
+    applies: [product, fashion, food_beverage]
+    prompt: "Overhead, items arranged in a tidy grid at right angles, equal gaps, nothing touching."
+    use_when: Kits, routines, contents of a set, regimen steps.
+    watch_out: Needs top-down; any perspective breaks the grid.
+    search: ["{category} knolling flat lay", "{category} routine products flat lay grid"]
+    related: [angle.top-down]
+  - id: placement.scattered-flat-lay
+    name: Organic flat lay
+    aliases: [scattered, styled flat lay, ingredient flat lay]
+    applies: [product, food_beverage, texture]
+    prompt: "Overhead, product lying on the surface with ingredients and props scattered loosely around it, one swatch of texture beside it."
+    use_when: Natural or ingredient-led brands, social squares.
+    watch_out: Clutter swallows the product — keep a clear zone around it.
+    search: ["{category} flat lay with ingredients", "{subject} styled flat lay"]
+    related: [placement.ingredient-story, motion.smear]
+  - id: placement.ingredient-story
+    name: Ingredient story
+    aliases: [hero ingredients, raw materials around product]
+    applies: [product, food_beverage]
+    prompt: "Product surrounded by its key ingredients, real and fresh, arranged close around its base."
+    use_when: Claims about ingredients, natural positioning.
+    watch_out: Only show ingredients the brief names; invented ingredients become claims.
+    search: ["{category} product with ingredients photography", "{subject} botanical ingredients still life"]
+    related: [surface.botanical, motion.floating-ingredients]
+  - id: placement.floating
+    name: Floating / levitating
+    aliases: [levitation, zero gravity, suspended]
+    applies: [product, device, food_beverage]
+    prompt: "Product floating in mid-air, tilted slightly, a soft shadow on the surface below to show its height."
+    use_when: Dynamic, modern visuals; pairs well with splashes or floating ingredients.
+    watch_out: Without a shadow or reflection it looks pasted in; caps and pumps may detach — keep them on.
+    search: ["{category} levitating product photography", "floating {subject} product shot"]
+    related: [motion.floating-ingredients, angle.dutch-tilt]
+  - id: placement.stacked-balance
+    name: Stacked or balancing
+    aliases: [balanced sculpture, stacked products]
+    applies: [product]
+    prompt: "Products stacked into a balanced sculpture, each resting believably on the one below."
+    use_when: Playful or architectural concepts, ranges of flat packs.
+    watch_out: Physics errors are obvious; keep it to 2–3 items.
+    search: ["{category} balanced stacked product photography"]
+    related: [placement.stepped-levels]
+  - id: placement.repeat-pattern
+    name: Repeat pattern
+    aliases: [pattern, multiples, grid of the same product]
+    applies: [product]
+    prompt: "The same product repeated in a regular pattern filling the frame, one turned or coloured differently as the focus."
+    use_when: Bold social graphics, backgrounds, launches of a new shade.
+    watch_out: Labels multiply errors — good for shape, risky for small text.
+    search: ["{category} product repeat pattern photography"]
+    related: [framing.tight-crop]
+  - id: placement.in-context
+    name: In context (lifestyle)
+    aliases: [lifestyle placement, on the shelf, vanity, bathroom]
+    applies: [product, product_with_model]
+    prompt: "Product in a real setting — on a bathroom shelf beside a basin — styled lightly, shot like a lifestyle photo with natural light."
+    use_when: Showing use and ritual; social and e-commerce secondary images.
+    watch_out: Busy settings swallow the product; keep it the sharpest, brightest thing.
+    search: ["{category} lifestyle product photography bathroom", "{subject} in context lifestyle shot"]
+    related: [light.soft-window, pose.mirror-routine]
+  - id: placement.reflection
+    name: On a reflective surface
+    aliases: [mirror reflection, water reflection, glossy floor]
+    applies: [product, device]
+    prompt: "Product standing on a glossy surface with a clean, slightly faded mirror reflection beneath it."
+    use_when: Premium, clean, cosmetic and tech visuals.
+    watch_out: Reflections must match the product exactly — check labels mirrored correctly.
+    search: ["{category} product reflection photography"]
+    related: [surface.mirror, surface.water]
+  - id: placement.frame-within-frame
+    name: Frame within a frame
+    aliases: [arch, window, cut-out frame, portal]
+    applies: [product, model]
+    prompt: "Product seen through an arch-shaped opening in a plaster wall, the arch framing it in the centre."
+    use_when: Architectural, editorial concepts; adds depth and focus.
+    watch_out: Frame shape fights 9:16 crops; plan adapts.
+    search: ["{category} product arch frame set design"]
+    related: [surface.plaster]
+  - id: placement.split-frame
+    name: Split frame / diptych
+    aliases: [before after, two halves, split screen]
+    applies: [product, model, texture]
+    prompt: "Frame split vertically into two halves: on the left the product, on the right its texture, matching colours across the split."
+    use_when: Product + texture, before/after, two shades.
+    watch_out: Better built in layout (two images) than in one generation.
+    search: ["{category} split screen campaign layout"]
+    related: [motion.smear]

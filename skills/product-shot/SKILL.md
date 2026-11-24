@@ -4,16 +4,19 @@ description: Commercial product photography with exact product fidelity — pack
 metadata:
   area: product
   version: "1.0.0"
-  tools: [client_context, image_generate, image_edit, image_compare, media_run]
+  tools: [product_list, product_add, shot_library, client_context, image_generate, image_edit, image_compare, qa_basics, qa_record]
 ---
 
 # Product shots
 
 ## Before you prompt
-1. `client_context` (query: the product name). Product folders (`clients/<c>/products/<product>/product.yaml`) hold cutouts (by `sha`), label text and style (packshot, group, angles, lifestyle).
+1. `product_list` for the client: each product's exact label text and its photos and cutouts (by `sha`, cutouts first). `client_context` (query: the product name) adds notes and past feedback. A product that's missing gets added with `product_add` (give the label text exactly; `cutout: true` removes the background when the media tools are installed).
    No local cutout? `search` the client's Drive (`kinds: [drive_file]`, query: the product name) and `drive_fetch` the best packshot.
 2. Choose the **cleanest** cutout per product: front-facing, evenly lit, label readable. One good cutout beats three mediocre ones. If there's no cutout but there's a photo, `media_run` `cutout` (optional media tools) makes one.
 3. Pass each as an input with role `product` and a note naming it ("Product: amber serum, 30 ml dropper bottle").
+
+## Choose the shot
+Pick the angle, placement, lighting and any motion from `shot_library` (subject `product` or `product_with_model`). Use each entry's `prompt` wording and heed its `watch_out`: a top-down angle hides front labels, and splashes swallow labels. The team's tagged examples for an id make strong `layout` or `reference` inputs.
 
 ## Prompt rules that keep products right
 - Describe each product by **visible identity** (shape, material, cap, colour, where the label sits), and tie it to its photo: "the amber dropper bottle exactly as in its product photo".

@@ -9,7 +9,7 @@ metadata:
 
 # Make images
 
-1. **Context (only if there's a client):** `client_context` with a query describing the image ("EPS005 honey jar on marble, warm morning light"). Pull products, palette, lighting notes, open comments.
+1. **Context (only if there's a client):** `client_context` with a query describing the image ("D01 honey jar on marble, warm morning light"). Pull products, palette, lighting notes, open comments.
 2. **Inputs:** choose reference images and give each a `role` and a `note`:
    - `product` — must be reproduced exactly (packaging, label, shape). Put these first.
    - `reference` — borrow something specific; say what in the note ("lighting only", "camera angle").

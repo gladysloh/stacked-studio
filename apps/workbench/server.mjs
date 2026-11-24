@@ -11,7 +11,10 @@ import { listProviders } from '../../core/providers/index.mjs';
 import { history, listGenerations, withReview } from '../../core/records.mjs';
 import { pickAgent, Runner } from '../../core/runner.mjs';
 import { spendSummary } from '../../core/spend.mjs';
-import { listClients, listProjects } from '../../core/workspace.mjs';
+import { clientDir, listClients, listProjects, resolveClient, SCRATCH } from '../../core/workspace.mjs';
+import { clientPage, clientsOverview, deliverablePage, projectPage } from '../../core/projects.mjs';
+import { addToInbox, fileInbox, listInbox } from '../../core/inbox.mjs';
+import { organiseClient } from '../../core/organise.mjs';
 
 // The Workbench's local server. Listens on 127.0.0.1 only. Every API call needs the session cookie,
 // set from a one-time link printed at start; requests whose Host or Origin isn't this server are
@@ -61,6 +64,22 @@ export async function startServer({ port = 4321, host = '127.0.0.1', open = true
         }
       });
     });
+  const readRaw = (req, limit = 40 * 1024 * 1024) =>
+    new Promise((resolve, reject) => {
+      const chunks = [];
+      let size = 0;
+      req.on('data', (c) => {
+        size += c.length;
+        if (size > limit) reject(new Error('That file is larger than 40 MB.'));
+        else chunks.push(c);
+      });
+      req.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+  const client = (c) => (c === SCRATCH ? SCRATCH : resolveClient(c));
+  const meta = () => {
+    const s = spendSummary(1);
+    return { agent: pickAgent()?.label ?? null, providers: listProviders().filter((p) => p.ready && p.id !== 'test').map((p) => p.label), spent_today: Number(s.today.toFixed(2)), daily_cap: s.cap, runs: runner.list() };
+  };
   const cookieOk = (req) => (req.headers.cookie || '').split(';').some((c) => c.trim() === `ss_session=${token}`);
 
   async function api(req, res, url) {
@@ -80,11 +99,53 @@ export async function startServer({ port = 4321, host = '127.0.0.1', open = true
         runs: runner.list(),
       });
     }
+    if (m === 'GET' && parts[0] === 'overview') return send(res, 200, { clients: clientsOverview(), scratch_inbox: listInbox(SCRATCH).length, ...meta() });
+    if (m === 'GET' && parts[0] === 'client' && parts[1]) {
+      const c = client(parts[1]);
+      const { googleStatus } = await import('../../core/google/auth.mjs');
+      const { clientFolderId } = await import('../../core/google/studio-drive.mjs');
+      let drive = null;
+      try {
+        drive = clientFolderId(c);
+      } catch {}
+      const page = c === SCRATCH ? { client: { slug: SCRATCH, name: 'No client' }, projects: listProjects(SCRATCH).map((p) => ({ slug: p.slug, name: p.name })), library: {} } : clientPage(c);
+      return send(res, 200, { ...page, inbox: listInbox(c).map(({ name, sha, note, width, height }) => ({ name, sha, note, width, height })), google: googleStatus(), drive_folder: drive ? `https://drive.google.com/drive/folders/${drive}` : null, ...meta() });
+    }
+    if (m === 'GET' && parts[0] === 'project' && parts[2]) return send(res, 200, { ...projectPage(client(parts[1]), parts[2]), ...meta() });
+    if (m === 'GET' && parts[0] === 'deliverable' && parts[3]) return send(res, 200, { ...deliverablePage(client(parts[1]), parts[2], parts[3]), ...meta() });
+    if (m === 'POST' && parts[0] === 'upload') {
+      const data = await readRaw(req);
+      return send(res, 200, addToInbox(client(q.client || SCRATCH), { data, name: q.name ?? 'upload.png', note: q.note || null }));
+    }
+    if (m === 'POST' && parts[0] === 'inbox') {
+      const b = await readBody(req);
+      return send(res, 200, await fileInbox(client(b.client || SCRATCH), b.items ?? []));
+    }
+    if (m === 'POST' && parts[0] === 'organise') {
+      const b = await readBody(req);
+      const r = organiseClient(client(b.client));
+      return send(res, 200, { ...r, skipped_existing: r.skipped_existing.length });
+    }
+    if (m === 'POST' && parts[0] === 'drive-push') {
+      const b = await readBody(req);
+      const { pushToDrive } = await import('../../core/google/studio-drive.mjs');
+      return send(res, 200, await pushToDrive(client(b.client), { parts: b.parts }));
+    }
+    if (m === 'POST' && parts[0] === 'open') {
+      // Opens the client's folder (or a subfolder of it) in Finder / the file manager. Never outside it.
+      const b = await readBody(req);
+      const base = clientDir(client(b.client));
+      const target = path.resolve(base, String(b.sub ?? ''));
+      if (!target.startsWith(base) || !fs.existsSync(target)) return send(res, 400, { error: 'No such folder.' });
+      const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open';
+      spawn(opener, [target], { stdio: 'ignore', detached: true }).unref();
+      return send(res, 200, { opened: path.relative(path.dirname(base), target) });
+    }
     if (m === 'GET' && parts[0] === 'image' && parts[1]) {
       const versions = history(parts[1]).map(summarize);
       const all = history(parts[1]);
       const me = withReview(all.find((g) => g.id === parts[1]));
-      return send(res, 200, { image: { ...summarize(me), instruction: me.instruction, comments: me.outputs.map((o) => o.comments) }, versions, shas: Object.fromEntries(all.map((g) => [g.id, withReview(g).outputs.map((o) => ({ sha: o.sha, mime: o.mime, status: o.status }))])) });
+      return send(res, 200, { image: { ...summarize(me), instruction: me.instruction, comments: me.outputs.map((o) => o.comments), checks: me.outputs.map((o) => o.check) }, versions, shas: Object.fromEntries(all.map((g) => [g.id, withReview(g).outputs.map((o) => ({ sha: o.sha, mime: o.mime, status: o.status }))])) });
     }
     if (m === 'POST' && parts[0] === 'review') {
       const b = await readBody(req);
@@ -98,7 +159,7 @@ export async function startServer({ port = 4321, host = '127.0.0.1', open = true
     if (m === 'GET' && parts[0] === 'runs') return send(res, 200, runner.list());
     if (m === 'POST' && parts[0] === 'runs' && parts.length === 1) {
       const b = await readBody(req);
-      return send(res, 200, runner.start({ kind: b.kind, text: b.text, target: b.id ?? null, output: b.output ?? 0, client: b.client || null, project: b.project || null, n: b.n ?? 1, aspect: b.aspect ?? null }));
+      return send(res, 200, runner.start({ kind: b.kind, text: b.text, target: b.id ?? null, output: b.output ?? 0, client: b.client && b.client !== SCRATCH ? b.client : null, project: b.project || null, deliverable: b.deliverable || null, n: b.n ?? 1, aspect: b.aspect ?? null }));
     }
     if (m === 'POST' && parts[0] === 'runs' && parts[2] === 'stop') return send(res, 200, runner.stop(parts[1]));
     return send(res, 404, { error: 'Not found.' });
@@ -113,7 +174,7 @@ export async function startServer({ port = 4321, host = '127.0.0.1', open = true
         if (url.searchParams.get('t') !== token) return send(res, 403, { error: 'This link has expired. Run studio ui again.' });
         // ?to=image/<id> opens a page straight away (only Workbench routes are allowed).
         const to = url.searchParams.get('to') ?? '';
-        const dest = /^(image|compare)\/[\w:,.-]+$/.test(to) ? `/#/${to}` : '/';
+        const dest = /^(image|compare|c|all)(\/[\w:,.-]+)*$/.test(to) ? `/#/${to}` : '/';
         res.writeHead(302, { 'set-cookie': `ss_session=${token}; HttpOnly; SameSite=Strict; Path=/`, location: dest });
         return res.end();
       }

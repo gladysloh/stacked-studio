@@ -6,7 +6,7 @@ import { StudioError } from './errors.mjs';
 import { readJsonl, readYaml, sha256, writeYamlAtomic } from './fsutil.mjs';
 import { mediaPath, putMedia, mimeFromName } from './media.mjs';
 import { paths, which } from './paths.mjs';
-import { clientDir, readClient } from './workspace.mjs';
+import { clientDir, layout, readClient } from './workspace.mjs';
 
 // Sharing a client with a teammate: a zip of the readable files (config, brand, knowledge, briefs,
 // records, review logs). Media stays out by default — approved images live on Drive and are fetched
@@ -23,7 +23,7 @@ function requireZip() {
 /** Hashes of media worth shipping with the client: product cutouts (and everything with --with-media). */
 function productMedia(slug) {
   const out = new Set();
-  const dir = path.join(clientDir(slug), 'products');
+  const dir = layout.products(slug);
   if (!fs.existsSync(dir)) return out;
   const scan = (v) => {
     if (!v || typeof v !== 'object') return;
@@ -85,7 +85,25 @@ function mergeJsonl(dest, incoming) {
   return add.length;
 }
 
-export function importClient(zip, { as } = {}) {
+/** relative path -> sha256 of every shareable text file in a client folder (the "base" for 3-way sync). */
+export function textHashes(slug) {
+  const root = clientDir(slug);
+  const out = {};
+  if (!fs.existsSync(root)) return out;
+  for (const f of fs.readdirSync(root, { recursive: true })) {
+    const rel = String(f);
+    if (rel.split(path.sep).some((p) => p.startsWith('.')) || !TEXT.test(rel)) continue;
+    const full = path.join(root, rel);
+    if (fs.statSync(full).isFile()) out[rel.split(path.sep).join('/')] = sha256(fs.readFileSync(full));
+  }
+  return out;
+}
+
+/**
+ * Merges a client zip into the workspace. With `base` (hashes from the last sync), a file changed
+ * on only one side takes that side's version; only files changed on both sides are conflicts.
+ */
+export function importClient(zip, { as, base = null } = {}) {
   requireZip();
   if (!fs.existsSync(zip)) throw new StudioError(`Can't find ${zip}.`);
   const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'stacked-import-'));
@@ -103,7 +121,7 @@ export function importClient(zip, { as } = {}) {
     if (!fs.existsSync(path.join(src, 'client.yaml'))) throw new StudioError('The zip has no client.yaml, so it is not a client export.');
     const slug = as ?? tops[0];
     const dest = clientDir(slug);
-    const report = { client: slug, added: 0, merged_entries: 0, unchanged: 0, conflicts: [], media: 0 };
+    const report = { client: slug, added: 0, updated: 0, kept_local: 0, merged_entries: 0, unchanged: 0, conflicts: [], media: 0 };
 
     const walk = (rel = '') => {
       for (const n of fs.readdirSync(path.join(src, rel))) {
@@ -134,6 +152,11 @@ export function importClient(zip, { as } = {}) {
           report.merged_entries += mergeJsonl(to, from);
         } else if (sha256(fs.readFileSync(to)) === sha256(fs.readFileSync(from))) {
           report.unchanged++;
+        } else if (base && base[r2.split(path.sep).join('/')] === sha256(fs.readFileSync(from))) {
+          report.kept_local++; // only we changed it
+        } else if (base && base[r2.split(path.sep).join('/')] === sha256(fs.readFileSync(to))) {
+          fs.copyFileSync(from, to); // only they changed it
+          report.updated++;
         } else {
           const theirs = `${to}.incoming`;
           fs.copyFileSync(from, theirs);

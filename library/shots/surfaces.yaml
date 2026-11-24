@@ -1,0 +1,91 @@
+category: surface
+name: Surfaces, sets and props
+entries:
+  - id: surface.seamless-color
+    name: Seamless colour
+    aliases: [paper backdrop, infinity curve, solid background]
+    applies: [product, model, device]
+    prompt: "Seamless paper backdrop in a single soft colour curving from floor to wall with no visible horizon."
+    use_when: Clean brand-colour sets, packshots, adapts that need easy extension.
+    search: ["{category} product photography solid color background"]
+    related: [light.top-softbox]
+  - id: surface.stone-marble
+    name: Stone and marble
+    aliases: [marble slab, travertine, natural stone]
+    applies: [product, food_beverage]
+    prompt: "Product on a slab of pale travertine with natural pits and soft veining, light grazing its texture."
+    use_when: Premium, natural, spa moods.
+    search: ["{category} product on marble photography", "travertine product still life"]
+    related: [light.hard-sun]
+  - id: surface.water
+    name: Water surface
+    aliases: [ripples, pool, wet set]
+    applies: [product, texture]
+    prompt: "Product standing in a few millimetres of still water, gentle ripples spreading from its base, reflections in the water."
+    use_when: Hydration, freshness, cleansing.
+    search: ["{category} product in water ripples photography"]
+    related: [light.caustics, placement.reflection]
+  - id: surface.sand
+    name: Sand and dunes
+    aliases: [beach, dune]
+    applies: [product]
+    prompt: "Product on rippled fine sand, low side light picking out the ripple shadows."
+    use_when: Sun care, summer, desert or mineral concepts.
+    search: ["{category} product on sand photography"]
+    related: [light.golden-hour]
+  - id: surface.fabric
+    name: Fabric drape
+    aliases: [silk, satin, linen, organza]
+    applies: [product, model]
+    prompt: "Product resting on softly draped ivory silk satin, the folds catching highlights."
+    use_when: Softness, luxury, bedtime and body care.
+    search: ["{category} product on silk fabric photography"]
+    related: [motion.fabric-flow]
+  - id: surface.botanical
+    name: Botanicals
+    aliases: [leaves, flowers, petals, greenery]
+    applies: [product, food_beverage]
+    prompt: "Product framed by fresh green leaves and a few petals, the plants slightly out of focus in the foreground."
+    use_when: Natural, ingredient and seasonal stories.
+    watch_out: Only use the plants the brief allows — they read as ingredients.
+    search: ["{category} product with botanicals photography"]
+    related: [placement.ingredient-story]
+  - id: surface.plaster
+    name: Plaster and sculptural set
+    aliases: [textured wall, plaster shapes, arches, set design]
+    applies: [product, model]
+    prompt: "A set of hand-plastered shapes — an arch, a step and a curved wall — in warm off-white, matte texture."
+    use_when: Editorial, architectural, premium.
+    search: ["{category} product set design plaster shapes"]
+    related: [placement.frame-within-frame, light.hard-sun]
+  - id: surface.glass-acrylic
+    name: Glass and acrylic blocks
+    aliases: [acrylic risers, glass cubes, prisms]
+    applies: [product, device]
+    prompt: "Clear acrylic blocks as risers, edges catching small rainbow refractions."
+    use_when: Clean, modern, clinical or tech looks; stepped layouts.
+    search: ["{category} product acrylic blocks photography"]
+    related: [placement.stepped-levels]
+  - id: surface.mirror
+    name: Mirror
+    aliases: [mirrored floor, reflective set]
+    applies: [product, device]
+    prompt: "Product on a mirror surface, the reflection crisp, the background a soft gradient."
+    use_when: Premium, symmetry, reflection concepts.
+    search: ["{category} product mirror surface photography"]
+    related: [placement.reflection]
+  - id: surface.wood
+    name: Wood
+    aliases: [timber, wooden board]
+    applies: [product, food_beverage]
+    prompt: "Product on a weathered light oak board, visible grain, warm side light."
+    use_when: Natural, artisanal, home.
+    search: ["{category} product on wood photography"]
+  - id: surface.ice
+    name: Ice
+    aliases: [ice cubes, frozen, frost]
+    applies: [product, food_beverage]
+    prompt: "Product set among clear ice blocks, frost on its surface, cool blue-white light."
+    use_when: Cooling, refreshing, drinks.
+    search: ["{category} product on ice photography"]
+    related: [motion.condensation]

@@ -46,7 +46,7 @@ test('import merges append-only logs and reports conflicts without overwriting',
   const { zip } = share.exportClient(slug, { out: path.join(t.dir, 'a.zip') });
   // Meanwhile, locally: a new comment and an edited brand.md.
   rec.addReview({ target: g.id, action: 'comment', note: 'mine' });
-  fs.appendFileSync(path.join(t.ws, 'clients/acme/brand.md'), '\nlocal edit\n');
+  fs.appendFileSync(path.join(t.ws, 'clients/acme/brand/brand.md'), '\nlocal edit\n');
   // The teammate's copy has their own comment.
   const ws2 = path.join(t.dir, 'ws2');
   process.env.STACKED_WORKSPACE = ws2;
@@ -60,7 +60,7 @@ test('import merges append-only logs and reports conflicts without overwriting',
   assert.deepEqual(notes.filter(Boolean).sort(), ['mine', 'theirs']);
   assert.equal(r.conflicts.length, 1);
   assert.match(r.conflicts[0].file, /brand\.md$/);
-  assert.match(fs.readFileSync(path.join(t.ws, 'clients/acme/brand.md'), 'utf8'), /local edit/);
+  assert.match(fs.readFileSync(path.join(t.ws, 'clients/acme/brand/brand.md'), 'utf8'), /local edit/);
 });
 
 test('team pack refuses API keys', async () => {

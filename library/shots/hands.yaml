@@ -1,0 +1,61 @@
+category: hands
+name: Hands and product interaction
+entries:
+  - id: hands.hold-hero
+    name: Single-hand hero hold
+    aliases: [hand holding product, holding up]
+    applies: [hands, product_with_model]
+    prompt: "One hand holding the product upright from below and behind, fingers wrapped low so the whole label faces the camera."
+    use_when: Scale, human touch, social formats.
+    watch_out: Fingers over the label; say where the fingers go. Check the finger count.
+    search: ["hand holding {subject} product photography", "{category} hand model holding product"]
+    related: [angle.front-straight]
+  - id: hands.fingertip-hold
+    name: Fingertip hold
+    aliases: [pinch, delicate hold, between fingers]
+    applies: [hands, product_with_model]
+    prompt: "Product held delicately between thumb and two fingertips, nails clean and natural, wrist relaxed."
+    use_when: Small products (droppers, lipsticks, vials); elegance.
+    search: ["fingertips holding small cosmetic product photography"]
+    related: [pose.product-at-cheek]
+  - id: hands.cupped-offering
+    name: Cupped hands offering
+    aliases: [two hands, palms up, presenting]
+    applies: [hands]
+    prompt: "Two cupped hands, palms up, presenting the product resting in them towards the camera."
+    use_when: Care, gentleness, gifting, natural brands.
+    search: ["cupped hands holding product photography"]
+    related: [surface.botanical]
+  - id: hands.pump-dispense
+    name: Pumping or dispensing
+    aliases: [pump into palm, dispensing]
+    applies: [hands, texture]
+    prompt: "A hand pressing the pump, a small dollop of product falling into the open palm of the other hand."
+    use_when: Showing texture and amount; usage visuals.
+    watch_out: Pump mechanics and liquid physics — keep it simple and close.
+    search: ["hand pumping product into palm photography"]
+    related: [motion.drip]
+  - id: hands.dropper
+    name: Dropper drip
+    aliases: [serum dropper, pipette]
+    applies: [hands, texture, product]
+    prompt: "A glass dropper held above the bottle, one clear drop of serum just leaving the tip, backlit so it glows."
+    use_when: Serums and oils; precision, potency.
+    search: ["serum dropper drop photography backlit"]
+    related: [light.backlit-glow, motion.drip]
+  - id: hands.swatch-on-hand
+    name: Swatch on the back of the hand
+    aliases: [texture swatch, swatch arm]
+    applies: [hands, texture]
+    prompt: "A neat swatch of the product spread on the back of a hand, glossy texture visible, product beside it."
+    use_when: Texture and shade demonstrations.
+    search: ["{category} swatch back of hand photography"]
+    related: [motion.smear]
+  - id: hands.reach-in
+    name: Hand reaching into frame
+    aliases: [hand entering, reach]
+    applies: [hands, product]
+    prompt: "A hand reaching in from the right edge of the frame towards the product, fingertips about to touch it."
+    use_when: Anticipation and interaction while the product stays the hero.
+    search: ["hand reaching for product minimal photography"]
+    related: [placement.copy-space]

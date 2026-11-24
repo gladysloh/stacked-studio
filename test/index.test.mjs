@@ -12,11 +12,11 @@ async function seed() {
   const ws = await import('../core/workspace.mjs');
   const slug = ws.createClient('Acme Skincare');
   const dir = path.join(t.ws, 'clients', slug);
-  fs.writeFileSync(path.join(dir, 'brand.md'), '# Acme\n\n## Palette\n\nWarm amber #C8862B and cream #F4EBDD.\n\n## Don\'t\n\nNo cold blue light. No clutter.\n');
-  fs.writeFileSync(path.join(dir, 'knowledge', 'tone.md'), '---\nstatus: draft\ntopic: tone\n---\n\n# Tone\n\nCalm, ritual, unhurried mornings.\n');
+  fs.writeFileSync(path.join(dir, 'brand', 'brand.md'), '# Acme\n\n## Palette\n\nWarm amber #C8862B and cream #F4EBDD.\n\n## Don\'t\n\nNo cold blue light. No clutter.\n');
+  fs.writeFileSync(path.join(dir, 'brand', 'notes', 'tone.md'), '---\nstatus: draft\ntopic: tone\n---\n\n# Tone\n\nCalm, ritual, unhurried mornings.\n');
   const p = ws.ensureProject(slug, 'Spring 2027');
-  fs.mkdirSync(path.join(dir, 'projects', p, 'deliverables', 'D01'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'projects', p, 'deliverables', 'D01', 'brief.md'), '# D01\n\n## Product\n\nAmber night serum\n\n## Lighting\n\nLow golden morning sun from the left\n');
+  fs.mkdirSync(path.join(dir, 'projects', p, 'D01-night-serum'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'projects', p, 'D01-night-serum', 'brief.md'), '# D01\n\n## Product\n\nAmber night serum\n\n## Lighting\n\nLow golden morning sun from the left\n');
   fs.mkdirSync(path.join(dir, 'decks', 'working'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'decks', 'working', 'comments.jsonl'), JSON.stringify({ id: 'c1', author: 'Client', body: 'Make the serum bottle bigger', slide: 3, asset_code: 'D01' }) + '\n');
   return slug;
@@ -38,7 +38,7 @@ test('keyword search finds briefs, labels trust, filters by kind', async () => {
 test('index refreshes when files change and forgets deleted files', async () => {
   const slug = await seed();
   const { search, refresh } = await import('../core/index.mjs');
-  const f = path.join(t.ws, 'clients', slug, 'knowledge', 'tone.md');
+  const f = path.join(t.ws, 'clients', slug, 'brand', 'notes', 'tone.md');
   assert.equal((await search('ritual', { client: slug })).results.length, 1);
   fs.rmSync(f);
   refresh();

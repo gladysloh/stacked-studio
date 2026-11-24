@@ -9,7 +9,7 @@ import { pickProvider } from './providers/index.mjs';
 import { addReview, findByRequestId, requireGeneration, withReview, writeGeneration } from './records.mjs';
 import { skillVersions } from './skills.mjs';
 import { checkBudget, recordSpend } from './spend.mjs';
-import { SCRATCH, clientDir, ensureProject, resolveClient } from './workspace.mjs';
+import { SCRATCH, ensureProject, layout, resolveClient } from './workspace.mjs';
 
 // The one path that makes images. Every call — new image, edit, variation, upscale — checks the daily
 // limit, renders, stores the files by hash and writes one record with its inputs and lineage. Failed
@@ -48,8 +48,8 @@ export function loadInputs(inputs = []) {
 /** The brand file version in use, so a record says which brand rules shaped it. */
 function autoContext(client) {
   if (client === SCRATCH) return [];
-  const brand = path.join(clientDir(client), 'brand.md');
-  return fs.existsSync(brand) ? [{ kind: 'brand', ref: 'brand.md', version: sha256(fs.readFileSync(brand)).slice(0, 12) }] : [];
+  const brand = layout.brand(client);
+  return fs.existsSync(brand) ? [{ kind: 'brand', ref: 'brand/brand.md', version: sha256(fs.readFileSync(brand)).slice(0, 12) }] : [];
 }
 
 /**

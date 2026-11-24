@@ -22,7 +22,11 @@ Creative work is not a line. Don't push anyone through research, a brief or conc
 | A brief (PDF, deck, doc, pasted text) | `brief-intake` |
 | A brief and no idea yet | `concept-directions` (or pipeline `brief-to-concepts`) |
 | "Find references", trends, competitors, Pinterest | `creative-research` |
-| An approved image in more formats | `format-adaptation` (or pipeline `kv-to-adapts`) |
+| An approved image in more formats | `format-adaptation` with `adapt_plan` (or pipeline `kv-to-adapts`) |
+| Copy or a logo on an image, or a Figma adapt set | `kv-layout` |
+| A Pinterest board to pull references from | `creative-research` (`pinterest_board`) |
+| "Find product photos / dynamic layouts / poses for …" | `creative-research` (`research_plan` per subject) |
+| "What angles / placements / poses could we use?" | `shot_library` (query, category or subject) |
 | An image that should move | `video-treatment` |
 | "Is this good?", "check it against the brief" | `creative-qa` |
 | Brand guidelines or a deck to learn from | `brand-profile-extraction` |
@@ -35,7 +39,10 @@ Creative work is not a line. Don't push anyone through research, a brief or conc
 ## Client or no client
 - No client named → work without one. Everything goes to `clients/_scratch/`.
 - A client named → call `client_context` with the client and what you're about to make. Follow **approved** rules (brand.md). Treat **source** items as the client's facts, and **draft** / **unverified** items as hints — say when you rely on one. Pass what you used as `context_used`.
-- Projects: pass `project` (created if new). For deck-based work, pass `deliverable` (e.g. `EPS005`); its brief is in `clients/<client>/projects/<project>/deliverables/<code>/brief.md`.
+- Projects: pass `project` (created if new). For deck-based work, pass `deliverable` (e.g. `D01`); its brief is in `clients/<client>/projects/<project>/<CODE>-<name>/brief.md`.
+
+## The working deck is the source of truth
+Each client's working deck (`client.yaml` → `links.decks`, marked `working`) is what the team follows. Deliverable codes, messaging, status and comments all come from it. Before working on a deliverable, re-sync it: `deck_import` with no link, when Google is connected. Read its open comments for that code. Local briefs mirror the deck: when they disagree, the deck wins, and tell the person. Deck images come from a PowerPoint download of that same deck (`deck_import_file`).
 
 ## Google Drive (when connected)
 - The client's Drive folder is the shared library. `search` with `kinds: [drive_file]` finds files by name, folder and description once `drive_index` has run. `drive_fetch` downloads one (cached), then use it as an input by `sha`.

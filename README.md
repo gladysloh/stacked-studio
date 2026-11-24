@@ -31,7 +31,8 @@ Without a key the studio makes free placeholder images, so you can try every flo
 | `./setup.sh --with-media` | Local Python media tools (palette, image info, cutouts). Needs [uv](https://docs.astral.sh/uv/) |
 | `studio team import team-pack.zip` | Shared team defaults: models, spending caps, the Drive root |
 | `studio client import acme.zip` | A client folder a teammate shared |
-| `studio ui` | The Workbench: view, compare, refine and approve in the browser |
+| `studio ui` | The Workbench: view, compare, refine, check and approve in the browser |
+| `studio connect google` | Drive, Slides and Sheets: shared library, deck sync, save to Drive, `studio client sync` ([setup](docs/google-setup.md)) |
 
 ## Layout
 

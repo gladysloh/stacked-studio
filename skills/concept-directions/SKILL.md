@@ -11,16 +11,16 @@ metadata:
 
 1. **Ground it.** `client_context` with the brief's goal; `search` past work and approved images to avoid repeating last campaign. Note mandatories and what the client has rejected before (deck comments).
 2. **Make them truly different.** Directions should differ in *idea*, not just colour. Spread across axes: literal ↔ metaphorical, product-hero ↔ world-hero, quiet ↔ bold, studio ↔ location.
-3. **For each direction (default 3), write** `clients/<client>/projects/<project>/concepts/<slug>.md`:
+3. **For each direction (default 3), write** a concept file. For a deliverable, put it in that deliverable's folder: `clients/<client>/projects/<project>/deliverables/<CODE-…>/concepts/<slug>.md`. For a whole project, use `clients/<client>/projects/<project>/concepts/<slug>.md`:
    ```
    ---
    name: Golden Hour Ritual
-   deliverable: EPS005        # if it belongs to one
+   deliverable: D01        # if it belongs to one
    status: proposed
    ---
    # Golden Hour Ritual
    **Idea:** one sentence. **Insight:** why it lands with this audience.
-   **Visual world:** setting, light, palette (hex), surfaces, props, casting.
+   **Visual world:** setting, light, palette (hex), surfaces, props, casting. Name the shots with shot-library ids (e.g. `angle.low-hero`, `placement.podium`, `light.backlit-glow`).
    **Brand fit:** which approved rules it honours; risks.
    **First prompt:** the prompt you'd use (see image-prompt-craft).
    ```

@@ -23,7 +23,7 @@ test('works without a client: new image goes to scratch with a record and files'
   assert.equal(g.outputs.length, 2);
   assert.equal(g.provider, 'test');
   for (const o of g.outputs) assert.ok(fs.existsSync(o.file));
-  const file = path.join(t.ws, 'clients/_scratch/projects/scratch/generations', `${g.id}.yaml`);
+  const file = path.join(t.ws, 'clients/_scratch/projects/scratch/_records/generations', `${g.id}.yaml`);
   assert.ok(fs.existsSync(file));
   assert.equal(g.author, 'tester');
 });

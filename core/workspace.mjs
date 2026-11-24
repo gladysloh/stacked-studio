@@ -46,11 +46,42 @@ export const ProjectSchema = z
   })
   .passthrough();
 
-const CLIENT_DIRS = ['knowledge', 'products', 'references', 'past-work', 'research', 'decks', 'projects'];
-const PROJECT_DIRS = ['deliverables', 'concepts', 'generations'];
-
 export const clientDir = (slug) => path.join(paths().clients, slug);
 export const projectDir = (client, project) => path.join(clientDir(client), 'projects', project);
+
+/**
+ * The client folder layout, in one place. Everything else asks here for paths.
+ *
+ *   client.yaml
+ *   brand/brand.md, brand/notes/, brand/logos/
+ *   products/<product>/product.yaml (+ photos/, cutouts/), products/_groups/<group>/
+ *   library/references/references.yaml (+ <subject>/…), library/past-work/past-work.yaml, library/moodboards/<board>/board.yaml
+ *   decks/<deck>/
+ *   inbox/
+ *   projects/<project>/project.yaml, brief.md, <CODE>-<name>/ (deliverables), _records/
+ */
+export const layout = {
+  clientYaml: (c) => path.join(clientDir(c), 'client.yaml'),
+  brandDir: (c) => path.join(clientDir(c), 'brand'),
+  brand: (c) => path.join(clientDir(c), 'brand', 'brand.md'),
+  notes: (c) => path.join(clientDir(c), 'brand', 'notes'),
+  products: (c) => path.join(clientDir(c), 'products'),
+  library: (c) => path.join(clientDir(c), 'library'),
+  references: (c) => path.join(clientDir(c), 'library', 'references', 'references.yaml'),
+  pastWork: (c) => path.join(clientDir(c), 'library', 'past-work', 'past-work.yaml'),
+  boards: (c) => path.join(clientDir(c), 'library', 'moodboards'),
+  board: (c, slug) => path.join(clientDir(c), 'library', 'moodboards', slug, 'board.yaml'),
+  decks: (c) => path.join(clientDir(c), 'decks'),
+  inbox: (c) => path.join(clientDir(c), 'inbox'),
+  projects: (c) => path.join(clientDir(c), 'projects'),
+  records: (c, p) => path.join(projectDir(c, p), '_records'),
+  generations: (c, p) => path.join(projectDir(c, p), '_records', 'generations'),
+  review: (c, p) => path.join(projectDir(c, p), '_records', 'review.jsonl'),
+};
+
+// Folder names inside a project that are never deliverables.
+export const PROJECT_RESERVED = new Set(['_records', 'concepts', 'images', 'final', 'versions', 'references']);
+const CLIENT_DIRS = ['brand/notes', 'products', 'library/references', 'library/past-work', 'library/moodboards', 'decks', 'inbox', 'projects'];
 
 export function listClients() {
   const root = paths().clients;
@@ -88,10 +119,10 @@ export function createClient(name, fields = {}) {
   const data = ClientSchema.parse({ name, links: {}, ...fields });
   writeYamlAtomic(path.join(dir, 'client.yaml'), data);
   for (const d of CLIENT_DIRS) fs.mkdirSync(path.join(dir, d), { recursive: true });
-  if (!fs.existsSync(path.join(dir, 'brand.md'))) {
+  if (!fs.existsSync(layout.brand(slug))) {
     writeFileAtomic(
-      path.join(dir, 'brand.md'),
-      `# ${name} — brand\n\nApproved brand knowledge only. Drafts and unverified notes go in knowledge/.\n\n## Palette\n\n## Typography\n\n## Tone of voice\n\n## Do\n\n## Don't\n\n## Products\n`
+      layout.brand(slug),
+      `# ${name} — brand\n\nApproved brand rules only. Drafts and unverified notes go in brand/notes/.\n\n## Palette\n\n## Typography\n\n## Tone of voice\n\n## Do\n\n## Don't\n\n## Products\n`
     );
   }
   return slug;
@@ -118,7 +149,7 @@ export function ensureProject(client, project, { create = true } = {}) {
     if (!create) throw new StudioError(`There's no project "${project}" for ${client}.`);
     writeYamlAtomic(path.join(dir, 'project.yaml'), { name: project ?? slug, status: 'active', created: new Date().toISOString() });
   }
-  for (const d of PROJECT_DIRS) fs.mkdirSync(path.join(dir, d), { recursive: true });
+  fs.mkdirSync(layout.generations(client, slug), { recursive: true });
   return slug;
 }
 
@@ -136,4 +167,32 @@ export function allProjects() {
     }
   }
   return out;
+}
+
+// ---- deliverables: projects/<p>/<CODE>-<readable-name>/ ----
+// The code (e.g. D01) is the id; the rest of the folder name is for people.
+
+export const codeOf = (folder) => String(folder).match(/^([A-Za-z0-9]+)/)?.[1] ?? folder;
+
+/** Every deliverable folder in a project: [{ code, folder, dir }]. */
+export function listDeliverables(client, project) {
+  const base = projectDir(client, project);
+  if (!fs.existsSync(base)) return [];
+  return fs
+    .readdirSync(base)
+    .filter((n) => !n.startsWith('.') && !n.startsWith('_') && !PROJECT_RESERVED.has(n) && fs.statSync(path.join(base, n)).isDirectory())
+    .sort()
+    .map((folder) => ({ code: readYaml(path.join(base, folder, 'deliverable.yaml'), {})?.code ?? codeOf(folder), folder, dir: path.join(base, folder) }));
+}
+
+/** The folder for a deliverable code; with `title`, created as <CODE>-<title> when it doesn't exist. */
+export function deliverableDir(client, project, code, { title, create = false } = {}) {
+  const hit = listDeliverables(client, project).find((d) => d.code.toLowerCase() === String(code).toLowerCase());
+  if (hit) return hit.dir;
+  if (!create) return null;
+  const name = title ? `${code}-${slugify(title).slice(0, 40).replace(/-+$/, '')}` : String(code);
+  const dir = path.join(projectDir(client, project), name);
+  fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(path.join(dir, 'deliverable.yaml'))) writeYamlAtomic(path.join(dir, 'deliverable.yaml'), { code: String(code), status: 'not_started' });
+  return dir;
 }

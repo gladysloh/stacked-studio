@@ -1,0 +1,84 @@
+category: angle
+name: Camera angles
+entries:
+  - id: angle.front-straight
+    name: Straight-on front
+    aliases: [eye level front, flat front, e-commerce front]
+    applies: [product, device, food_beverage]
+    prompt: "Eye-level, straight-on front view, camera centred on the label, long-lens look (about 100 mm) so verticals stay parallel and the product has no distortion."
+    use_when: Packshots, e-commerce, any time the label must be fully readable.
+    watch_out: Can look flat — add depth with a contact shadow, rim light or a soft gradient background.
+    search: ["{subject} front packshot", "{category} product front view minimal"]
+    related: [placement.centered-hero, light.top-softbox]
+  - id: angle.three-quarter
+    name: Three-quarter view
+    aliases: ["3/4 view", 45 degree turn, angled front]
+    applies: [product, device, food_beverage]
+    prompt: "Product turned about 30–40° from the camera so the front label and one side are both visible, camera at product mid-height."
+    use_when: Showing form and volume while keeping the label readable; the default hero angle.
+    watch_out: Wrapped labels foreshorten — say which side faces the camera and keep the label's key word on the near face.
+    search: ["{subject} three quarter view product photography", "{category} product angled hero"]
+    related: [light.specular-strip, placement.hero-with-supporting]
+  - id: angle.high-45
+    name: High angle, looking down ~45°
+    aliases: [high angle, elevated view, tabletop view]
+    applies: [product, food_beverage, device]
+    prompt: "Camera about 45° above the table looking down at the product, showing the top (cap, lid) and the front together."
+    use_when: Tabletop sets, groups on a surface, showing caps, lids and what's around the product.
+    watch_out: Tall bottles look squat; labels on the front tilt away — keep them large.
+    search: ["{category} product photography high angle tabletop", "{subject} still life overhead angle"]
+    related: [placement.triangle-group, surface.stone-marble]
+  - id: angle.top-down
+    name: Top-down (flat lay)
+    aliases: [overhead, bird's eye, flat lay, 90 degrees]
+    applies: [product, food_beverage, texture, fashion]
+    prompt: "Directly overhead, camera at 90° looking straight down, products lying flat on the surface, no perspective convergence."
+    use_when: Flat lays, knolling, ingredient stories, texture backgrounds, square social formats.
+    watch_out: Standing products show only their caps — lay them down label-up. Shadows fall straight down; use a side light for shape.
+    search: ["{category} flat lay product photography", "{subject} knolling flat lay", "overhead {category} styling"]
+    related: [placement.flat-lay-grid, placement.scattered-flat-lay]
+  - id: angle.low-hero
+    name: Low-angle hero
+    aliases: [worm's eye, looking up, monumental]
+    applies: [product, device, model]
+    prompt: "Camera low, just below the product's base, looking slightly up so the product feels tall and monumental against the background or sky."
+    use_when: Hero key visuals, premium or powerful positioning, products on podiums.
+    watch_out: Exaggerates converging verticals; keep the lens long-ish and the label facing the camera.
+    search: ["{category} product low angle hero shot", "{subject} monumental product photography"]
+    related: [placement.podium, light.backlit-glow]
+  - id: angle.profile
+    name: Side profile
+    aliases: [side view, 90 degree side]
+    applies: [product, device, model]
+    prompt: "Pure side view of the product at eye level, its silhouette crisp against the background."
+    use_when: Distinctive silhouettes, slim devices, showing thickness or a dropper/pump shape.
+    watch_out: The front label is invisible — pair with a front shot in a set.
+    search: ["{subject} side profile product photography", "{category} silhouette product shot"]
+    related: [light.backlit-glow, framing.negative-space]
+  - id: angle.back-label
+    name: Back of pack
+    aliases: [back label, ingredients side]
+    applies: [product]
+    prompt: "Back of the product facing the camera, back label fully visible and evenly lit."
+    use_when: Ingredient or claim stories, e-commerce galleries.
+    watch_out: Image models invent small text — never rely on generated back-label copy; composite the real artwork.
+    search: ["{subject} back label product photo"]
+    related: [angle.front-straight]
+  - id: angle.macro-detail
+    name: Macro detail
+    aliases: [extreme close-up, detail shot]
+    applies: [product, texture, device, food_beverage]
+    prompt: "Macro close-up filling the frame with one detail — the cap's finish, the dropper tip, the glass edge — very shallow depth of field."
+    use_when: Premium cues (materials, finishes), texture, carousel detail frames.
+    watch_out: Wordmarks cropped mid-word look like errors; crop on a clean edge.
+    search: ["{subject} macro product detail", "{category} packaging detail close up"]
+    related: [framing.extreme-closeup, light.specular-strip]
+  - id: angle.dutch-tilt
+    name: Tilted frame
+    aliases: [dutch angle, canted]
+    applies: [product, model, device]
+    prompt: "Camera rolled about 10–15° so the horizon and product sit on a diagonal, adding energy."
+    use_when: Dynamic social formats, motion-led concepts, youthful brands.
+    watch_out: Easily reads as a mistake in premium categories; use with motion or floating, not on a still tabletop.
+    search: ["dynamic tilted {category} product photography"]
+    related: [placement.floating, motion.splash]

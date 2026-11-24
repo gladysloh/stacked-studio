@@ -4,7 +4,7 @@ description: Check a studio image against its deliverable — messaging, open de
 metadata:
   area: qa
   version: "1.0.0"
-  tools: [history, client_context, review, image_edit]
+  tools: [qa_basics, qa_record, history, client_context, product_list]
 ---
 
 # Creative QA
@@ -51,6 +51,9 @@ Up to 3. Each is one concrete instruction under 25 words, phrased as **what to c
 - **Label check:** compare visible label text against the product's real name, letter by letter. Report clean / wrong (quote it) / no text visible. A wrong label is a fail in `visual_execution`; suggest a new version, not a retouch.
 - **Known product quirks:** when a product fails the same way every time (a word that always comes out misspelled), check it first and name it in the suggestion. Suggest it as client knowledge (a draft note in `clients/<client>/knowledge/` (`status: draft`), kind `products`) so it's remembered.
 - **Stop-loss:** if this is the 5th version in one history and the same problem persists, say so and suggest a different route (a new reference, a different angle, compositing or a manual retouch) instead of another refine.
+
+## Save it
+Run `qa_basics` first (format, resolution, palette: measured, not judged) and use it for `technical` and `brand_alignment`. When done, call `qa_record` with the scores, the labels you read (`expected` from `product_list`, `read` letter by letter, `ok`), up to 3 suggestions and a one-line summary. The verdict and overall are computed from your scores by the rule above. Don't compute them yourself. The check then shows on the image in the Workbench.
 
 ## Reply
 A short record: the verdict in plain words, the areas that scored below 4 with their notes, and the suggestions. Leave approving or rejecting to the person in the studio.

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { readJsonl, slugify, writeFileAtomic, writeYamlAtomic, readYaml } from '../fsutil.mjs';
 import { putMedia } from '../media.mjs';
-import { clientDir } from '../workspace.mjs';
+import { clientDir, layout } from '../workspace.mjs';
 import { fileId, gfetch, hosts } from './api.mjs';
 
 // Google Slides decks into a client's decks/<slug>/: deck.yaml (ids, revision), slides.md (text and
@@ -51,7 +51,7 @@ export async function importDeck(client, ref, { thumbnails = false } = {}) {
   const deck = await gfetch(`${hosts().slides}/presentations/${id}`);
   const meta = await gfetch(`${hosts().drive}/files/${id}?fields=id,name,modifiedTime,webViewLink,headRevisionId&supportsAllDrives=true`);
   const slug = slugify((deck.title ?? meta.name ?? id).replace(/^\[[^\]]*\]\s*/, ''));
-  const dir = path.join(clientDir(client), 'decks', slug);
+  const dir = path.join(layout.decks(client), slug);
 
   const slides = (deck.slides ?? []).map((s, i) => {
     const body = textOf(s.pageElements);

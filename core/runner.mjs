@@ -15,8 +15,11 @@ import { readSkill } from './skills.mjs';
 // image made in a run is linked back to it.
 
 const RUN_TIMEOUT_MS = 10 * 60 * 1000;
-export const RUN_KINDS = ['new', 'refine', 'direction'];
-const TOOLS = ['studio_capabilities', 'client_context', 'search', 'drive_fetch', 'image_generate', 'image_edit', 'image_upscale', 'image_compare', 'history'];
+export const RUN_KINDS = ['new', 'refine', 'direction', 'check', 'organise'];
+const TOOLS = ['studio_capabilities', 'client_context', 'search', 'drive_fetch', 'product_list', 'image_generate', 'image_edit', 'image_upscale', 'image_compare', 'history', 'qa_basics', 'qa_record'];
+const ORGANISE_TOOLS = ['studio_capabilities', 'inbox_list', 'inbox_file', 'product_list', 'shot_library', 'client_context', 'client_list'];
+// A check only looks and writes its result: it may not make or change images.
+const CHECK_TOOLS = TOOLS.filter((t) => !t.startsWith('image_') || t === 'image_compare');
 
 export function pickAgent() {
   if (process.env.STACKED_AGENT_CMD) return { id: 'custom', label: 'Test agent', cmd: process.env.STACKED_AGENT_CMD };
@@ -34,7 +37,13 @@ const q = (s) => `"""${String(s).replaceAll('"""', '"')}"""`;
 export function buildTask(run) {
   const where = run.client ? `Client: ${run.client}${run.project ? `, project: ${run.project}` : ''}. Call client_context first.` : 'No client: work in scratch.';
   if (run.kind === 'new') {
-    return `Make an image in the studio.\n${where}\nThe person's request (pass it verbatim as instruction): ${q(run.text)}\nRead the image-generate skill, write the prompt, call image_generate with n=${run.n ?? 1}${run.aspect ? ` and aspect ${run.aspect}` : ''}. Then reply in one or two short lines.`;
+    return `Make an image in the studio.\n${where}${run.deliverable ? `\nFor deliverable ${run.deliverable}: read its brief (client_context with the code) and pass deliverable "${run.deliverable}" to image_generate.` : ''}\nThe person's request (pass it verbatim as instruction): ${q(run.text)}\nRead the image-generate skill, write the prompt, call image_generate with n=${run.n ?? 1}${run.aspect ? ` and aspect ${run.aspect}` : ''}. Then reply in one or two short lines.`;
+  }
+  if (run.kind === 'organise') {
+    return `Organise the inbox of ${run.client ? `client ${run.client}` : 'scratch (no client)'}.\n${run.text?.trim() ? `The person's note: ${q(run.text)}\n` : ''}Read the organise-inbox skill and follow it: inbox_list, open every image, then file them all with inbox_file. Do not make images. Reply with a one-line summary of where things went.`;
+  }
+  if (run.kind === 'check') {
+    return `Check image ${run.target} (output ${run.output ?? 0}) against its brief.\n${where}\n${run.text?.trim() ? `The person's focus: ${q(run.text)}\n` : ''}Read the creative-qa skill and follow it: qa_basics first, then look at the image, its history and product photos (product_list), and save the result with qa_record. Do not make or change images. Reply with the verdict in one or two lines.`;
   }
   const mode = run.kind === 'refine' ? 'edit' : 'branch';
   return `${run.kind === 'refine' ? 'Refine' : 'Start a new direction from'} image ${run.target} (output ${run.output ?? 0}).\n${where}\nThe person's request (pass it verbatim as instruction): ${q(run.text)}\nRead the image-edit skill. Call image_edit with id ${run.target}, output ${run.output ?? 0}, mode "${mode}", a prompt that says only the change, and what_changed. Then reply in one or two short lines.`;
@@ -46,7 +55,7 @@ export function agentCommand(agent, run, task) {
   if (agent.id === 'claude') {
     const mcp = JSON.stringify({ mcpServers: { 'stacked-studio': { command: process.execPath, args: [STUDIO_BIN, 'mcp'], env } } });
     const args = ['-p', task, '--output-format', 'stream-json', '--verbose', '--restricted', '--strict-mcp-config', '--mcp-config', mcp,
-      '--tools', 'Read', '--allowedTools', ...TOOLS.map((t) => `mcp__stacked-studio__${t}`), 'Read', '--permission-mode', 'dontAsk',
+      '--tools', 'Read', '--allowedTools', ...(run.kind === 'check' ? CHECK_TOOLS : run.kind === 'organise' ? ORGANISE_TOOLS : TOOLS).map((t) => `mcp__stacked-studio__${t}`), 'Read', '--permission-mode', 'dontAsk',
       '--add-dir', paths().media, '--append-system-prompt', system];
     return { cmd: agent.cmd, args, env };
   }
@@ -77,6 +86,11 @@ export function progressFrom(event) {
         image_edit: 'Changing the image',
         image_upscale: 'Upscaling',
         image_compare: 'Comparing',
+        qa_basics: 'Measuring format and colour',
+        inbox_list: 'Looking at the inbox',
+        inbox_file: 'Filing images',
+        qa_record: 'Saving the check',
+        product_list: 'Reading product photos',
         history: 'Looking at earlier versions',
         Read: 'Looking at the images',
       }[n] ?? null
@@ -122,11 +136,11 @@ export class Runner {
     return r ? this.view(r) : null;
   }
 
-  start({ kind, text, target = null, output = 0, client = null, project = null, n = 1, aspect = null }) {
+  start({ kind, text, target = null, output = 0, client = null, project = null, deliverable = null, n = 1, aspect = null }) {
     if (!RUN_KINDS.includes(kind)) throw new Error(`Unknown run kind "${kind}".`);
-    if (!String(text ?? '').trim()) throw new Error('Type what you want first.');
-    if (kind !== 'new' && !target) throw new Error('Which image?');
-    const run = { id: newId('run'), kind, text: String(text).slice(0, 4000), target, output, client, project, n, aspect, status: 'queued', steps: [], message: null, created: new Date().toISOString() };
+    if (!['check', 'organise'].includes(kind) && !String(text ?? '').trim()) throw new Error('Type what you want first.');
+    if (!['new', 'organise'].includes(kind) && !target) throw new Error('Which image?');
+    const run = { id: newId('run'), kind, text: String(text ?? '').slice(0, 4000), target, output, client, project, deliverable, n, aspect, status: 'queued', steps: [], message: null, created: new Date().toISOString() };
     this.runs.set(run.id, run);
     this.queue.push(run.id);
     this.save(run);

@@ -4,10 +4,12 @@ description: Move an approved key visual into other formats (1:1, 4:5, 9:16, 16:
 metadata:
   area: campaign
   version: "1.0.0"
-  tools: [image_edit, image_generate, image_compare]
+  tools: [adapt_plan, image_edit, image_compare, qa_basics]
 ---
 
 # Format adaptation
+
+**Start with `adapt_plan`.** Give it the approved image and the sizes. For each size it returns the exact pixels, the safe box, the layout archetype and the action: `resize`, `crop` (with the box), `recompose` (with the model aspect and a prompt hint for `image_edit` mode `branch`), or `layout` (extreme banners → Figma, see `kv-layout`). The rest of this skill explains the reasoning behind those choices.
 
 An image is approved in one format, then needed in others. Each format wants its own layout, and a phone's UI covers the top and bottom of vertical formats.
 

@@ -14,7 +14,7 @@ metadata:
 3. **Write `clients/<client>/projects/<project>/brief.md`** with these sections (omit empty ones):
    `## Objective` · `## Audience` · `## Key message` · `## Mandatories` (logos, claims, legal lines, product list) · `## Tone` · `## Deliverables` · `## Timing` · `## Open questions`.
    Quote claims and legal lines exactly. Mark anything you inferred with "(inferred)".
-4. **Deliverables:** one folder each, `deliverables/<CODE>/brief.md`, with `## Product`, `## Key message`, `## Format` (sizes, aspect ratios, duration for video), `## Copy` (headline/super/claims verbatim), `## Notes`. Use the brief's own codes; otherwise `D01`, `D02`… Classify each as key visual, product shot, adapt set, video, social post, or other.
+4. **Deliverables:** one folder each, named `deliverables/<CODE>-<short-name>/` (for example `D01-night-serum-hero`; the code comes first and is the id), containing `brief.md` with `## Product`, `## Key message`, `## Format` (sizes, aspect ratios, duration for video), `## Copy` (headline/super/claims verbatim), `## Notes`. Use the brief's own codes; otherwise `D01`, `D02`… Classify each as key visual, product shot, adapt set, video, social post, or other.
 5. **project.yaml:** `name`, `status: active`, and `links` to the source deck/docs (Drive URLs or ids).
 6. **Summarise** in a few lines: what's being asked, the deliverables, and the open questions. Then ask where to start — don't start production automatically.
 

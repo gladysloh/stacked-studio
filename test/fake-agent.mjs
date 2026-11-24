@@ -12,6 +12,12 @@ if (words.includes('fail please')) {
 }
 if (words.includes('slow')) await new Promise((r) => setTimeout(r, 5000));
 const target = task.match(/image (\S+) \(output (\d+)\)/);
+if (task.startsWith('Check image')) {
+  const { recordCheck } = await import('../core/qa.mjs');
+  recordCheck({ id: target[1], output: Number(target[2]), summary: 'Label misspelled', scores: { messaging: { score: 4, note: 'ok' }, visual_execution: { score: 2, note: 'label wrong', severity: 'major' } }, labels: [{ product: 'Serum', expected: 'SERUM', read: 'SERUN', ok: false }], suggestions: ['Re-render the label front-facing and larger.'] });
+  say({ type: 'done', ok: true, message: 'Needs changes.' });
+  process.exit(0);
+}
 if (target) {
   const mode = task.includes('mode "branch"') ? 'branch' : 'edit';
   await makeImage({ mode, parent: target[1], parent_output: Number(target[2]), prompt: words, instruction: words, what_changed: words, provider: 'test' });

@@ -1,24 +1,53 @@
 {
-  "_comment": "Aspect-class → archetype map for the composed adapt engine. ar = width/height. Classify each adapt size by picking the FIRST band whose ar range matches AND whose max_short_edge gate (if present) passes. Templates live in the brand Figma file (clients/<id>.json brands.<Brand>.figma_url), 'Templates' page; node-ids below are the fintech client's.",
-  "_validated": "All 9 the fintech client sizes classify correctly: leaderboard(8.09)+mobile(6.4)→single-strip; on-site(3.0)+landing(1.78)→horizontal-split; medium-rect(1.2,short=250)→compact-box; post(1.0)+portrait(0.8)→hero-faithful; story(0.56)+skyscraper(0.27)→vertical-stack.",
+  "_comment": "Aspect-class → layout archetype. ar = width/height. Classify each adapt size by the FIRST band whose ar range matches AND whose max_short_edge gate (if present) passes. Each team keeps its own Figma templates per archetype.",
+  "_validated": "Validated on a 9-size paid-social and display set: leaderboard(8.09)+mobile banner(6.4)→single-strip; on-site(3.0)+landing(1.78)→horizontal-split; medium-rect(1.2, short edge 250)→compact-box; post(1.0)+portrait(0.8)→hero-faithful; story(0.56)+skyscraper(0.27)→vertical-stack.",
   "classes": [
-    { "archetype": "single-strip",     "ar_min": 3.5,  "ar_max": 99.0 },
-    { "archetype": "horizontal-split",  "ar_min": 1.4,  "ar_max": 3.5 },
-    { "archetype": "compact-box",       "ar_min": 1.0,  "ar_max": 1.4, "max_short_edge": 320 },
-    { "archetype": "hero-faithful",     "ar_min": 0.7,  "ar_max": 1.4 },
-    { "archetype": "vertical-stack",    "ar_min": 0.0,  "ar_max": 0.7 }
+    {
+      "archetype": "single-strip",
+      "ar_min": 3.5,
+      "ar_max": 99
+    },
+    {
+      "archetype": "horizontal-split",
+      "ar_min": 1.4,
+      "ar_max": 3.5
+    },
+    {
+      "archetype": "compact-box",
+      "ar_min": 1,
+      "ar_max": 1.4,
+      "max_short_edge": 320
+    },
+    {
+      "archetype": "hero-faithful",
+      "ar_min": 0.7,
+      "ar_max": 1.4
+    },
+    {
+      "archetype": "vertical-stack",
+      "ar_min": 0,
+      "ar_max": 0.7
+    }
   ],
-  "templates": {
-    "_figma_file": "dZFl4HOrUI9Mm9pY1ibc17",
-    "_page_node_id": "13:2",
-    "hero-faithful":    { "figma_node_id": "13:3" },
-    "vertical-stack":   { "figma_node_id": "25:2" },
-    "horizontal-split": { "figma_node_id": "32:2" },
-    "single-strip":     { "figma_node_id": "49:2" },
-    "compact-box":      { "figma_node_id": "63:2" }
-  },
-  "slots": ["bg","content","logo-pill","headline","subhead","clusters-row","reward-cluster","or-pill","cta","legal","vertical-pill"],
-  "cluster_slots": ["card","icon","chip","label"],
+  "slots": [
+    "bg",
+    "content",
+    "logo-pill",
+    "headline",
+    "subhead",
+    "clusters-row",
+    "reward-cluster",
+    "or-pill",
+    "cta",
+    "legal",
+    "vertical-pill"
+  ],
+  "cluster_slots": [
+    "card",
+    "icon",
+    "chip",
+    "label"
+  ],
   "_slot_notes": {
     "bg": "full-frame, image fill swapped to KV background; NOT inside content; bleeds full-frame",
     "logo-pill": "brand-constant; real the fintech client logo SVG baked into the template (mint #29D196 MONEY + navy SMART on white pill) — engine does NOT fill this",

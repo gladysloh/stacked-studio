@@ -1,0 +1,106 @@
+category: pose
+name: Model poses
+entries:
+  - id: pose.beauty-closeup
+    name: Beauty close-up
+    aliases: [head and shoulders, beauty shot, face close up]
+    applies: [model, product_with_model]
+    prompt: "Tight head-and-shoulders beauty portrait, face to camera, chin slightly down, soft even skin with visible natural texture."
+    use_when: Skincare and makeup results, glow and skin claims.
+    watch_out: Over-smooth plastic skin — ask for natural texture and fine pores.
+    search: ["{category} beauty close up portrait campaign", "natural skin glow beauty shot"]
+    related: [light.soft-window, pose.product-at-cheek]
+  - id: pose.product-at-cheek
+    name: Product held by the face
+    aliases: [product next to face, cheek hold]
+    applies: [product_with_model]
+    prompt: "Model holding the product beside the cheek with fingertips, label facing the camera, product in sharp focus near her face."
+    use_when: Linking product and result in one frame; social and KV.
+    watch_out: Hands and label both risky — keep the hold simple and the label large.
+    search: ["{category} model holding product next to face", "beauty campaign product by cheek"]
+    related: [hands.fingertip-hold, pose.beauty-closeup]
+  - id: pose.applying
+    name: Applying the product
+    aliases: [application, in use, putting on cream]
+    applies: [product_with_model, texture]
+    prompt: "Model gently applying cream to the cheekbone with two fingertips, eyes softly closed, a little cream visible on the skin."
+    use_when: Showing ritual and texture in use.
+    watch_out: Texture on skin can look like a mark — keep it small and glossy.
+    search: ["{category} model applying product close up", "skincare application beauty photography"]
+    related: [motion.smear, hands.swatch-on-hand]
+  - id: pose.hand-to-face
+    name: Hand to face
+    aliases: [touching skin, framing face with hand]
+    applies: [model]
+    prompt: "Model resting fingertips lightly along the jawline, relaxed hand, looking past the camera."
+    use_when: Skin feel and softness without showing the product.
+    watch_out: Count fingers; keep hands relaxed, not clawed.
+    search: ["beauty pose hand on face editorial"]
+    related: [pose.beauty-closeup]
+  - id: pose.over-shoulder
+    name: Over the shoulder
+    aliases: [looking back]
+    applies: [model, fashion]
+    prompt: "Model turned away, looking back over her shoulder towards the camera, shoulder and neckline in the foreground."
+    use_when: Body care, fragrance, fashion; elegance and movement.
+    search: ["over the shoulder pose beauty campaign"]
+    related: [light.backlit-glow]
+  - id: pose.profile-gaze
+    name: Profile, eyes away
+    aliases: [side profile model, serene profile]
+    applies: [model]
+    prompt: "Side profile of the model, eyes looking off-frame, clean jawline against a plain background."
+    use_when: Calm, premium, editorial moods; leaves space for copy.
+    search: ["beauty side profile portrait minimal"]
+    related: [framing.negative-space]
+  - id: pose.eyes-closed
+    name: Eyes closed, serene
+    aliases: [calm, meditative, ritual]
+    applies: [model, product_with_model]
+    prompt: "Model with eyes closed, face relaxed, a faint smile, light falling softly across the face."
+    use_when: Night care, self-care, calm rituals.
+    search: ["serene beauty portrait eyes closed"]
+    related: [light.golden-hour]
+  - id: pose.candid-laugh
+    name: Candid laugh
+    aliases: [natural, lifestyle laugh, joyful]
+    applies: [model, product_with_model]
+    prompt: "Model mid-laugh, head tilted back slightly, eyes crinkled, caught naturally as if unposed."
+    use_when: Youthful, friendly brands; social.
+    watch_out: Teeth and eyes are easy to get wrong; generate several and pick.
+    search: ["{category} lifestyle campaign candid laugh"]
+    related: [light.golden-hour]
+  - id: pose.mirror-routine
+    name: Mirror routine
+    aliases: [bathroom ritual, vanity, getting ready]
+    applies: [product_with_model]
+    prompt: "Model at a bathroom mirror in the morning, applying product, seen partly in the mirror's reflection."
+    use_when: Routine and ritual storytelling, in-context use.
+    watch_out: Mirror reflections must match; keep the camera off-axis so it isn't in the reflection.
+    search: ["skincare routine mirror lifestyle photography"]
+    related: [placement.in-context, light.soft-window]
+  - id: pose.seated-lifestyle
+    name: Seated lifestyle
+    aliases: [sitting, relaxed at home]
+    applies: [model, product_with_model]
+    prompt: "Model seated cross-legged on linen bedding, relaxed posture, holding the product in her lap."
+    use_when: Home, comfort and routine moods.
+    search: ["{category} lifestyle model sitting at home"]
+    related: [surface.fabric]
+  - id: pose.walking
+    name: Walking, in motion
+    aliases: [stride, movement, street]
+    applies: [model, fashion]
+    prompt: "Model walking towards the camera mid-stride, hair and clothes moving, slight motion in the background."
+    use_when: Energy, fashion, outdoor and city concepts.
+    search: ["{category} campaign model walking motion"]
+    related: [motion.fabric-flow]
+  - id: pose.full-body
+    name: Full body, weight on one leg
+    aliases: [contrapposto, standing, full length]
+    applies: [model, fashion]
+    prompt: "Full-length standing pose, weight on one leg, hips slightly turned, one hand relaxed at the side."
+    use_when: Fashion, body care, looks.
+    watch_out: Full body at 1K loses face and hand detail; go 2K or keep crops tighter.
+    search: ["fashion full body pose editorial {category}"]
+    related: [framing.wide-environmental]

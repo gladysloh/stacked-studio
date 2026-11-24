@@ -15,6 +15,8 @@ const SERVICE = 'stacked-studio';
 export const SERVICES = {
   gemini: { label: 'Gemini', env: 'GEMINI_API_KEY', used_for: 'images, video (Veo), embeddings' },
   fal: { label: 'fal.ai', env: 'FAL_KEY', used_for: 'images, video, upscaling' },
+  brave: { label: 'Brave Search', env: 'BRAVE_API_KEY', used_for: 'image search for references (optional)' },
+  serpapi: { label: 'SerpAPI', env: 'SERPAPI_KEY', used_for: 'Google Images search for references (optional)' },
 };
 
 /** Secrets that aren't API keys a person types (e.g. the Google sign-in token). */

@@ -1,0 +1,43 @@
+category: framing
+name: Framing and crop
+entries:
+  - id: framing.negative-space
+    name: Negative space for copy
+    aliases: [space for headline, empty top]
+    applies: [product, model, product_with_model]
+    prompt: "The top third of the frame left as clean, empty background for a headline; the product sits in the lower half."
+    use_when: Any layout with copy; plan with adapt safe zones.
+    search: ["{category} ad negative space headline"]
+    related: [placement.copy-space]
+  - id: framing.tight-crop
+    name: Tight crop
+    aliases: [cropped edges, bleed off frame]
+    applies: [product, model]
+    prompt: "Tight framing that crops the edges of the scene, the product filling most of the frame."
+    use_when: Bold social, impact, detail-led stories.
+    watch_out: Don't crop through a wordmark.
+    search: ["{category} tight crop product photography"]
+  - id: framing.extreme-closeup
+    name: Extreme close-up
+    aliases: [macro framing, detail]
+    applies: [product, texture, model]
+    prompt: "Extreme close-up, one detail filling the frame, everything else soft."
+    use_when: Texture, finish, skin and material stories.
+    search: ["{category} extreme close up macro"]
+    related: [angle.macro-detail]
+  - id: framing.wide-environmental
+    name: Wide environmental
+    aliases: [establishing, scene, room]
+    applies: [model, product_with_model, interior]
+    prompt: "Wide framing showing the whole setting, the subject small but clear within it."
+    use_when: Lifestyle, place and mood; banners and 16:9.
+    watch_out: Products get tiny — composite or keep the product large in the foreground.
+    search: ["{category} wide lifestyle campaign photography"]
+  - id: framing.shallow-depth
+    name: Shallow depth of field
+    aliases: [bokeh, soft background, f/2]
+    applies: [product, model]
+    prompt: "Shallow depth of field, the product sharp, the background melting into soft bokeh."
+    use_when: Separating the hero from busy settings.
+    search: ["{category} product shallow depth of field bokeh"]
+    related: [placement.hero-with-supporting]

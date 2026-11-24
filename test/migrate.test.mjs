@@ -65,10 +65,10 @@ test('migration accounts for every row, keeps lineage, review and media, and nev
   const yaml = (await import('yaml')).default;
   const cfg = yaml.parse(fs.readFileSync(path.join(c, 'client.yaml'), 'utf8'));
   assert.equal(cfg.links.decks[0].slides_id, 'SLIDES1');
-  assert.match(fs.readFileSync(path.join(c, 'knowledge', 'brand-palette.md'), 'utf8'), /status: "approved"[\s\S]*Warm amber/);
-  assert.equal(yaml.parse(fs.readFileSync(path.join(c, 'knowledge', 'history', 'brand-palette.yaml'), 'utf8')).length, 2);
+  assert.match(fs.readFileSync(path.join(c, 'brand', 'notes', 'brand-palette.md'), 'utf8'), /status: "approved"[\s\S]*Warm amber/);
+  assert.equal(yaml.parse(fs.readFileSync(path.join(c, 'brand', 'notes', 'history', 'brand-palette.yaml'), 'utf8')).length, 2);
   assert.equal(yaml.parse(fs.readFileSync(path.join(c, 'products', 'night-serum', 'product.yaml'), 'utf8')).label_text, 'NIGHT SERUM');
-  assert.match(fs.readFileSync(path.join(c, 'projects', 'spring-2027', 'deliverables', 'D01', 'brief.md'), 'utf8'), /Wake up glowing[\s\S]*Golden side light[\s\S]*#C8862B/);
+  assert.match(fs.readFileSync(path.join(c, 'projects', 'spring-2027', 'D01-night-serum', 'brief.md'), 'utf8'), /Wake up glowing[\s\S]*Golden side light[\s\S]*#C8862B/);
   assert.match(fs.readFileSync(path.join(c, 'decks', 'acme-working-deck', 'comments.jsonl'), 'utf8'), /Bigger bottle/);
 
   const rec = await import('../core/records.mjs');

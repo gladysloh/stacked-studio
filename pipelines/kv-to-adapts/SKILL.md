@@ -10,8 +10,8 @@ metadata:
 # Key visual → adapts
 
 1. Confirm the source is approved (`history` shows status). If not, ask before adapting.
-2. List target formats from the deliverable brief (or ask). Group by aspect class (tall, square, wide, strip) — see `format-adaptation`.
-3. Per format: `image_edit` mode `branch` from the KV with `aspect` set and a recompose prompt ("Extend the scene to 9:16: more marble below, more sky above; keep product size, position relative to the light, and label exactly"). Products must stay inside the safe zone ([safe-zones.json](../../skills/format-adaptation/references/safe-zones.json)).
+2. List target formats from the deliverable brief (or ask), then `adapt_plan` with the KV and every size. Show the person the plan: how many sizes need resizing, cropping, recomposing or a Figma layout, and the cost of the recomposes.
+3. For each `recompose`: `image_edit` mode `branch` from the KV with the plan's `model_aspect` and a recompose prompt built on its `prompt_hint` ("Extend the scene to 9:16: more marble below, more sky above; keep product size, position relative to the light, and label exactly"). Products must stay inside the safe zone ([safe-zones.json](../../skills/format-adaptation/references/safe-zones.json)).
 4. Check each against the format's safe zone and the product (`creative-qa`, quick). Fix with `image_edit`.
-5. Copy and logo: if the format needs headline/super/logo, place them in Figma with the Figma tools (one frame per format, image as fill, safe zones as guides) rather than rendering text in the image.
+5. Copy, logo, `resize`/`crop` sizes and `layout` banners: build them in Figma with `kv-layout`. That means one frame per size at the exact pixels, the image as fill (cropped per plan), and copy and logo inside the safe box.
 6. `image_compare` the set against the KV so the person can approve them together.

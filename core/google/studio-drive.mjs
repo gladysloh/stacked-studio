@@ -8,7 +8,7 @@ import { paths } from '../paths.mjs';
 import { addReview, requireGeneration, reviewsFor, withReview } from '../records.mjs';
 import { SCRATCH, clientDir, readClient } from '../workspace.mjs';
 import { fileId } from './api.mjs';
-import { ensurePath, getFile, indexClientDrive, uploadPath } from './drive.mjs';
+import { downloadTo, ensurePath, findByName, getFile, indexClientDrive, updateFile, uploadPath } from './drive.mjs';
 
 // How the studio uses Drive:
 //   team.yaml  google.root_folder_id   the team's Shared Drive (or a folder in it)
@@ -121,3 +121,104 @@ export async function uploadClientPack(zipFile) {
   return { drive_id: up.id, link: up.webViewLink ?? `https://drive.google.com/file/d/${up.id}/view`, name: up.name };
 }
 
+
+/**
+ * Two-way sync of a client with the team's Shared Drive, through one pack per client
+ * (_client-packs/<client>.zip): pull and merge the shared copy, then push the merged result.
+ * If the merge finds conflicts, nothing is pushed until they are resolved.
+ */
+export async function syncClient(client) {
+  const root = teamConfig().google?.root_folder_id;
+  if (!root) throw new StudioError('The team pack has no google.root_folder_id.', 'Add the Shared Drive to team.yaml (docs/google-setup.md).');
+  const os = await import('node:os');
+  const fs = await import('node:fs');
+  const { exportClient, importClient, textHashes } = await import('../share.mjs');
+  const stateFile = path.join(paths().cache, 'drive', 'sync.json');
+  const state = readJson(stateFile, {}) ?? {};
+  const folder = await ensurePath(fileId(root), '_client-packs');
+  const name = `${client}.zip`;
+  const remote = await findByName(folder.id, name);
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'stacked-sync-'));
+  try {
+    let pulled = null;
+    if (remote) {
+      const { file } = await downloadTo(remote.id, path.join(tmp, 'remote.zip'));
+      pulled = importClient(file, { as: client, base: state[client]?.base ?? null });
+      if (pulled.conflicts.length) {
+        return { client, pulled, pushed: null, message: `${pulled.conflicts.length} file(s) differ from the shared copy. Each has a .incoming version next to it: keep what's right, delete the .incoming file, then sync again.` };
+      }
+    }
+    const { zip } = exportClient(client, { out: path.join(tmp, name) });
+    const data = fs.readFileSync(zip);
+    const up = remote ? await updateFile(remote.id, { data, mime: 'application/zip' }) : await uploadPath(zip, { parentId: folder.id, name, mime: 'application/zip', description: `stacked-studio shared copy of ${client}: studio client sync ${client}` });
+    state[client] = { at: new Date().toISOString(), drive_id: up.id, base: textHashes(client) };
+    writeJsonAtomic(stateFile, state);
+    return { client, pulled, pushed: { drive_id: up.id, link: up.webViewLink ?? `https://drive.google.com/file/d/${up.id}/view` }, message: remote ? 'Merged with the shared copy and updated it.' : 'Made the first shared copy.' };
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+export const PUSH_PARTS = { brand: 'brand/logos', products: 'products', library: 'library', final: 'projects/*/*/final', versions: 'projects/*/*/versions', references: 'projects/*/*/references' };
+
+/**
+ * Uploads the client's readable folders to its Drive folder with the same names and layout, when the
+ * person asks. Files already uploaded (same path and content) are skipped. Never touches read-only folders.
+ */
+export async function pushToDrive(client, { parts = ['brand', 'products', 'library', 'final'], dryRun = false } = {}) {
+  const base = clientFolderId(client);
+  if (!base) throw new StudioError(`${client} has no Drive folder yet.`, `studio drive init ${client}`);
+  const fs = await import('node:fs');
+  const crypto = await import('node:crypto');
+  const { organiseClient } = await import('../organise.mjs');
+  organiseClient(client);
+  const dir = clientDir(client);
+  const files = [];
+  for (const part of parts) {
+    const pattern = PUSH_PARTS[part];
+    if (!pattern) throw new StudioError(`Unknown part "${part}". Use: ${Object.keys(PUSH_PARTS).join(', ')}.`);
+    // Expand each * one folder level at a time (projects/*/*/final → every deliverable's final/).
+    let roots = [''];
+    for (const seg of pattern.split('/')) {
+      roots = roots.flatMap((r) => {
+        if (seg !== '*') return [path.posix.join(r, seg)];
+        const abs = path.join(dir, r);
+        return fs.existsSync(abs) ? fs.readdirSync(abs).filter((n) => !n.startsWith('.') && !n.startsWith('_') && fs.statSync(path.join(abs, n)).isDirectory()).map((n) => path.posix.join(r, n)) : [];
+      });
+    }
+    for (const r of roots) {
+      const abs = path.join(dir, r);
+      if (!fs.existsSync(abs)) continue;
+      for (const f of fs.readdirSync(abs, { recursive: true })) {
+        const full = path.join(abs, String(f));
+        if (fs.statSync(full).isFile() && /\.(png|jpe?g|webp|gif|mp4|mov|pdf)$/i.test(full)) files.push(path.relative(dir, full).split(path.sep).join('/'));
+      }
+    }
+  }
+  const stateFile = path.join(paths().cache, 'drive', 'pushed.json');
+  const state = readJson(stateFile, {}) ?? {};
+  const done = (state[client] ??= {});
+  const todo = files.filter((rel) => {
+    const md5 = crypto.createHash('md5').update(fs.readFileSync(path.join(dir, rel))).digest('hex');
+    return done[rel]?.md5 !== md5;
+  });
+  if (dryRun) return { client, files: files.length, to_upload: todo.length, already: files.length - todo.length };
+  const folders = new Map();
+  let uploaded = 0;
+  for (const rel of todo) {
+    const parentRel = path.posix.dirname(rel);
+    if (!folders.has(parentRel)) folders.set(parentRel, (await ensurePath(base, parentRel)).id);
+    const full = path.join(dir, rel);
+    const data = fs.readFileSync(full);
+    const md5 = crypto.createHash('md5').update(data).digest('hex');
+    const existing = await findByName(folders.get(parentRel), path.posix.basename(rel));
+    const up = existing ? (existing.md5Checksum === md5 ? existing : await updateFile(existing.id, { data, mime: mimeOf(rel) })) : await uploadPath(full, { parentId: folders.get(parentRel), mime: mimeOf(rel) });
+    done[rel] = { id: up.id, md5 };
+    uploaded++;
+    if (uploaded % 25 === 0) writeJsonAtomic(stateFile, state);
+  }
+  writeJsonAtomic(stateFile, state);
+  return { client, files: files.length, uploaded, already: files.length - todo.length, folder: folderLink(base) };
+}
+
+const mimeOf = (f) => ({ '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.pdf': 'application/pdf' })[path.extname(f).toLowerCase()] ?? 'application/octet-stream';

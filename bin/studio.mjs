@@ -49,9 +49,16 @@ const HELP = `stacked-studio
   studio history [<id>] [--client C] [--project P]
   studio review <id> approve|reject|like|comment|rate [--note "..."] [--value 4] [--output 0]
 
+  studio product list <client> | add <client> "<name>" [image] [--label "…"] [--cutout]
+  studio check <id> [--output 0]            measured checks: format, resolution, brand palette
   studio client list | new "<name>" | context <client> ["<query>"]
   studio client export <client> [--out file.zip] [--with-media] [--drive]
   studio client import <file.zip | Drive link> [--as <folder>]
+  studio client sync <client>               two-way sync with the team Shared Drive
+  studio board save <client|-> "<name>" '<json items>' | board pinterest <client|-> "<name>" <board link>
+  studio adapt <id> <format> [<format> ...]  plan sizes: e.g. INSTAGRAM_STORY 1080x1080 728x90
+  studio shots [<id> | <words>] [--category angle] [--subject product]   the shot library
+  studio research plan <subject> "<what>" [--category C] [--client C]    targeted reference searches
   studio team import <team-pack.zip>
   studio connect google | disconnect google  sign in to Drive, Slides and Sheets (browser)
   studio drive init <client> | link <client> <folder link> [--read-only]   the client's Drive folders
@@ -59,6 +66,7 @@ const HELP = `stacked-studio
   studio drive fetch <link|id>              download a Drive file into the cache
   studio drive save <id> [--output 0] [--folder <link>]      upload an image to Drive
   studio deck import <client> [<slides link>] [--thumbnails]  import a deck, or re-sync all linked decks
+  studio deck import-file <client> <deck.pptx> [--project P]  file a downloaded deck's images into deliverables
   studio sheet read <link> [--range "Shots!A1:H50"] | sheet write <link> --range R '<json rows>'
   studio search "<query>" [--client C] [--kind brief ...]
   studio index [--rebuild] [--embed]
@@ -236,7 +244,10 @@ async function main() {
         refresh();
         return out(r);
       }
-      if (sub === 'sync') throw new Error('Direct Drive sync is coming later. For now: export, share the zip on Drive, import.');
+      if (sub === 'sync') {
+        const { runOp } = await import('../core/ops.mjs');
+        return out(await runOp('client_sync', { client: a }));
+      }
       throw new Error(`Unknown: studio client ${sub}`);
     }
 
@@ -265,8 +276,51 @@ async function main() {
       throw new Error('Usage: studio drive init|link|index|fetch|save …');
     }
 
+    case 'shots': {
+      const { runOp } = await import('../core/ops.mjs');
+      const q = pos.join(' ');
+      if (/^[a-z]+\.[a-z0-9-]+$/.test(q)) return out(await runOp('shot_library', { id: q }));
+      const r = await runOp('shot_library', { query: q || undefined, category: opts.category, subject: opts.subject, limit: num(opts.limit) ?? 100 });
+      return out(r.entries.map((e) => `${e.id.padEnd(30)} ${e.name}`).join('\n'));
+    }
+
+    case 'research': {
+      const { runOp } = await import('../core/ops.mjs');
+      if (pos[0] !== 'plan') throw new Error('Usage: studio research plan <subject> "<what>" [--category skincare] [--client C] [--shot id ...]');
+      return out(await runOp('research_plan', { subject: pos[1] ?? 'product', subject_name: pos.slice(2).join(' ') || undefined, category: opts.category, client: opts.client, shots: list(opts.shot), competitors: list(opts.competitor) }));
+    }
+
+    case 'board': {
+      const { runOp } = await import('../core/ops.mjs');
+      const [sub, client, name, arg] = pos;
+      const c = client === '-' ? undefined : client;
+      if (sub === 'save') return out(await runOp('moodboard_save', { client: c, name, items: JSON.parse(arg ?? '[]'), for: opts.for, notes: opts.notes }));
+      if (sub === 'pinterest') return out(await runOp('pinterest_board', { link: arg, client: c, save_as: name }));
+      throw new Error('Usage: studio board save|pinterest …');
+    }
+
+    case 'adapt': {
+      const { runOp } = await import('../core/ops.mjs');
+      const [id, ...formats] = pos;
+      return out(await runOp('adapt_plan', { id, output: num(opts.output) ?? 0, formats }));
+    }
+
+    case 'product': {
+      const { runOp } = await import('../core/ops.mjs');
+      const [sub, client, name, image] = pos;
+      if (sub === 'list' || !sub) return out(await runOp('product_list', { client }));
+      if (sub === 'add') return out(await runOp('product_add', { client, name, label_text: opts.label, notes: opts.notes, style: opts.style, cutout: Boolean(opts.cutout), image: image ? { path: image } : opts.sha ? { sha: opts.sha } : undefined }));
+      throw new Error('Usage: studio product list <client> | add <client> "<name>" [image] [--label "…"] [--cutout]');
+    }
+
+    case 'check': {
+      const { runOp } = await import('../core/ops.mjs');
+      return out(await runOp('qa_basics', { id: pos[0], output: num(opts.output) ?? 0, aspect: opts.aspect }));
+    }
+
     case 'deck': {
-      if (pos[0] !== 'import') throw new Error('Usage: studio deck import <client> <slides link> [--thumbnails]');
+      if (pos[0] === 'import-file') return out(await (await import('../core/ops.mjs')).runOp('deck_import_file', { client: pos[1], file: pos[2], project: opts.project, force: Boolean(opts.force) }));
+      if (pos[0] !== 'import') throw new Error('Usage: studio deck import <client> [<slides link>] | deck import-file <client> <deck.pptx>');
       const { runOp } = await import('../core/ops.mjs');
       return out(await runOp('deck_import', { client: pos[1], deck: pos[2], thumbnails: Boolean(opts.thumbnails) }));
     }

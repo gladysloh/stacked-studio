@@ -46,7 +46,9 @@ export async function runMedia(tool, args = {}) {
   if (!/^[a-z_]+$/.test(tool)) throw new StudioError(`Bad tool name "${tool}".`);
   if (!pyReady()) throw new StudioError('The media tools are not installed.', './setup.sh --with-media');
   // Tools run inside py/, so relative paths are resolved here first.
-  if (typeof args.path === 'string') args = { ...args, path: path.resolve(args.path.replace(/^~(?=\/)/, process.env.HOME ?? '~')) };
+  const abs = (p) => path.resolve(String(p).replace(/^~(?=\/)/, process.env.HOME ?? '~'));
+  if (typeof args.path === 'string') args = { ...args, path: abs(args.path) };
+  if (Array.isArray(args.paths)) args = { ...args, paths: args.paths.map(abs) };
   const result = await uvRun(['python', '-m', 'stacked_media', tool], args);
   // Files a tool made go into the media cache here (Node owns the cache), returned by hash.
   if (Array.isArray(result.files)) {

@@ -1,0 +1,87 @@
+category: lighting
+name: Lighting setups
+entries:
+  - id: light.soft-window
+    name: Soft window light
+    aliases: [natural light, diffused side light]
+    applies: [product, model, product_with_model, food_beverage]
+    prompt: "Soft, diffused daylight from a large window on the left, gentle falloff to the right, soft-edged shadows."
+    use_when: Natural, calm, honest moods; lifestyle and beauty.
+    search: ["{category} soft window light photography"]
+    related: [placement.in-context]
+  - id: light.hard-sun
+    name: Hard sun with shadows
+    aliases: [gobo, leaf shadows, dappled light, window shadows]
+    applies: [product, model]
+    prompt: "Hard, warm sunlight from the upper right casting crisp shadows of leaves across the product and the wall behind it."
+    use_when: Summer, natural and editorial looks; adds texture to plain sets.
+    watch_out: Shadows can cross the label — say where they fall.
+    search: ["{category} product photography hard sunlight shadows", "leaf shadow product photography"]
+    related: [surface.plaster, surface.botanical]
+  - id: light.backlit-glow
+    name: Backlit glow
+    aliases: [rim light, translucent glow, light through glass]
+    applies: [product, texture, model]
+    prompt: "Light from behind the product so its glass and liquid glow from within, a thin bright rim outlining its edges."
+    use_when: Translucent packaging, serums, oils, drinks; premium, luminous moods.
+    watch_out: Front label goes dark — add a soft front fill.
+    search: ["backlit {category} product photography glow", "translucent bottle backlight photography"]
+    related: [hands.dropper, angle.low-hero]
+  - id: light.top-softbox
+    name: Even studio light (e-commerce)
+    aliases: [packshot lighting, softbox, clean studio]
+    applies: [product, device]
+    prompt: "Even, shadow-light studio lighting from a large softbox above and in front, a soft contact shadow under the product."
+    use_when: Packshots, e-commerce, catalogues.
+    search: ["{category} ecommerce packshot lighting"]
+    related: [angle.front-straight, surface.seamless-color]
+  - id: light.specular-strip
+    name: Strip highlights
+    aliases: [specular highlights, edge lights, glossy reflections]
+    applies: [product, device]
+    prompt: "Two tall strip lights reflected as clean vertical highlights on the product's glossy surface, defining its curves."
+    use_when: Glossy bottles, glass, metal and devices; luxury.
+    search: ["product photography strip light reflections glossy bottle"]
+    related: [angle.three-quarter, light.low-key]
+  - id: light.golden-hour
+    name: Golden hour
+    aliases: [sunset, warm low sun]
+    applies: [product, model, product_with_model]
+    prompt: "Warm, low golden-hour sun from the side, long soft shadows, a gentle haze of warm light."
+    use_when: Warm, aspirational, outdoor moods.
+    search: ["{category} golden hour product photography"]
+    related: [pose.eyes-closed]
+  - id: light.high-key
+    name: High key
+    aliases: [bright, airy, white]
+    applies: [product, model]
+    prompt: "Bright high-key lighting, near-white background, very soft low-contrast shadows."
+    use_when: Clean, clinical, fresh positioning.
+    watch_out: White products disappear — add a subtle edge shadow.
+    search: ["high key {category} product photography"]
+    related: [surface.seamless-color]
+  - id: light.low-key
+    name: Low key / chiaroscuro
+    aliases: [dark, moody, dramatic]
+    applies: [product, model, device]
+    prompt: "Dark, moody low-key lighting: one hard light carving the product out of a near-black background."
+    use_when: Night, luxury, fragrance, men's grooming, tech.
+    search: ["low key dark {category} product photography"]
+    related: [light.specular-strip]
+  - id: light.caustics
+    name: Water caustics
+    aliases: [light through water, pool light, refracted light]
+    applies: [product, texture]
+    prompt: "Rippling caustic light patterns from water refracted across the product and the surface below."
+    use_when: Hydration, freshness, summer, water-based products.
+    search: ["caustic light product photography water"]
+    related: [surface.water]
+  - id: light.color-gel
+    name: Coloured gels
+    aliases: [neon, coloured light, gradient light]
+    applies: [product, model, device]
+    prompt: "Coloured gel lighting: magenta from the left and cyan from the right, mixing softly on the background."
+    use_when: Youthful, bold, night-out or tech concepts.
+    watch_out: Gels shift the product's true colour; keep the product itself lit neutrally.
+    search: ["colored gel lighting {category} product photography"]
+    related: [light.low-key]

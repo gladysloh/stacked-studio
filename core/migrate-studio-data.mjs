@@ -7,7 +7,7 @@ import { StudioError } from './errors.mjs';
 import { sha256, slugify, writeFileAtomic, writeYamlAtomic } from './fsutil.mjs';
 import { EXT, putMedia } from './media.mjs';
 import { paths, which } from './paths.mjs';
-import { clientDir, createClient } from './workspace.mjs';
+import { clientDir, createClient, layout } from './workspace.mjs';
 
 // One-time move from New Gen Studio (studio-app's ~/.studio data folder) into client folders.
 // The source is never written to: the database is copied with `sqlite3 .backup` (which folds in the
@@ -94,6 +94,7 @@ export async function migrateStudioData(from, { dryRun = false } = {}) {
     const deliverableOf = new Map(deliverables.map((d) => [d.id, d]));
     const conceptOf = new Map(concepts.map((c) => [c.id, c]));
     const deckSlug = new Map();
+    const deliverableFolder = new Map();
     const media = (hash) => (hash ? { sha: hash, mime: assetBy.get(hash)?.mime ?? null, width: assetBy.get(hash)?.width ?? null, height: assetBy.get(hash)?.height ?? null } : null);
     const used = new Set();
     const use = (h) => (h && used.add(h), h);
@@ -125,8 +126,8 @@ export async function migrateStudioData(from, { dryRun = false } = {}) {
         const name = `${item.kind}-${slugify(item.title)}`;
         const fm = clean({ title: item.title, topic: item.kind, status: current?.status === 'approved' ? 'approved' : 'draft', source: current?.source, version: current?.version, studio_id: item.id });
         const yamlFm = Object.entries(fm).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join('\n');
-        writeText(path.join(clientDir(slug), 'knowledge', `${name}.md`), `---\n${yamlFm}\n---\n\n# ${item.title}\n\n${current?.body ?? ''}\n`);
-        write(path.join(clientDir(slug), 'knowledge', 'history', `${name}.yaml`), versions.map((v) => clean({ id: v.id, version: v.version, status: v.status, body: v.body, note: v.note, source: v.source, created: v.created_at, by: v.created_by, approved: v.approved_at })));
+        writeText(path.join(layout.notes(slug), `${name}.md`), `---\n${yamlFm}\n---\n\n# ${item.title}\n\n${current?.body ?? ''}\n`);
+        write(path.join(layout.notes(slug), 'history', `${name}.yaml`), versions.map((v) => clean({ id: v.id, version: v.version, status: v.status, body: v.body, note: v.note, source: v.source, created: v.created_at, by: v.created_by, approved: v.approved_at })));
         bump('knowledge_item');
         bump('knowledge_version', versions.length);
       }
@@ -141,21 +142,21 @@ export async function migrateStudioData(from, { dryRun = false } = {}) {
         products.get(key).push(a);
       }
       for (const [key, list] of products) {
-        write(path.join(clientDir(slug), 'products', key, 'product.yaml'), clean({ name: list[0].name ?? key, label_text: list.find((x) => x.label_text)?.label_text, cutouts: list.map(item) }));
+        write(path.join(layout.products(slug), key, 'product.yaml'), clean({ name: list[0].name ?? key, label_text: list.find((x) => x.label_text)?.label_text, cutouts: list.map(item) }));
         bump('client_asset', list.length);
       }
       const refs = mine.filter((x) => ['reference', 'talent', 'logo', 'document'].includes(x.kind)).map((a) => ({ kind: a.kind, ...item(a) }));
-      if (refs.length) write(path.join(clientDir(slug), 'references', 'refs.yaml'), { items: refs });
+      if (refs.length) write(layout.references(slug), { items: refs });
       bump('client_asset', refs.length);
       const past = mine.filter((x) => x.kind === 'past_work').map(item);
-      if (past.length) write(path.join(clientDir(slug), 'past-work', 'past.yaml'), { items: past });
+      if (past.length) write(layout.pastWork(slug), { items: past });
       bump('client_asset', past.length);
 
       // decks: config, slides as markdown, comments as an append-only log, full text.
       for (const d of myDecks) {
         const ds = slugify(d.title.replace(/^\[[^\]]*\]\s*/, ''));
         deckSlug.set(d.id, ds);
-        const dir = path.join(clientDir(slug), 'decks', ds);
+        const dir = path.join(layout.decks(slug), ds);
         write(path.join(dir, 'deck.yaml'), clean({
           title: d.title, source: d.source, slides_id: d.source_id, url: d.source_url, modified: d.modified_at, imported: d.imported_at, synced: d.synced_at, slide_count: d.slide_count,
           file: media(use(d.file_hash)),
@@ -185,7 +186,11 @@ export async function migrateStudioData(from, { dryRun = false } = {}) {
     }
     for (const d of deliverables) {
       const p = projectOf.get(d.project_id);
-      const dir = path.join(clientDir(clientSlug.get(p.client_id)), 'projects', projectSlug.get(p.id), 'deliverables', d.code);
+      const lastMsg = messaging.filter((m) => m.deliverable_id === d.id).at(-1);
+      const title = lastMsg?.product ?? lastMsg?.key_message ?? '';
+      const dname = title ? `${d.code}-${slugify(title).slice(0, 40).replace(/-+$/, '')}` : d.code;
+      deliverableFolder.set(d.id, dname);
+      const dir = path.join(clientDir(clientSlug.get(p.client_id)), 'projects', projectSlug.get(p.id), dname);
       const msgs = messaging.filter((m) => m.deliverable_id === d.id).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
       const sl = dSlides.filter((s) => s.deliverable_id === d.id).sort((a, b) => a.slide - b.slide);
       const files = dFiles.filter((f) => f.deliverable_id === d.id);
@@ -227,11 +232,16 @@ export async function migrateStudioData(from, { dryRun = false } = {}) {
       bump('deliverable_file', files.length);
       bump('deliverable_like', likes.length);
     }
+    // Concepts live in their deliverable's folder. The old studio made an empty "Concept A, B, C…"
+    // for every attempt: those have no content, so only concepts with a note get a file; the name
+    // stays on each image's record either way.
     for (const c of concepts) {
       const d = deliverableOf.get(c.deliverable_id);
       const p = projectOf.get(d.project_id);
-      const file = path.join(clientDir(clientSlug.get(p.client_id)), 'projects', projectSlug.get(p.id), 'concepts', `${d.code}-${slugify(c.name)}.md`);
-      writeText(file, `---\nname: ${JSON.stringify(c.name)}\ndeliverable: ${d.code}\nstudio_id: ${c.id}\ncreated: ${c.created_at}${c.archived ? '\narchived: true' : ''}\n---\n\n# ${d.code} · ${c.name}\n\n${c.note ?? ''}\n`);
+      if (c.note?.trim()) {
+        const file = path.join(clientDir(clientSlug.get(p.client_id)), 'projects', projectSlug.get(p.id), deliverableFolder.get(d.id) ?? d.code, 'concepts', `${slugify(c.name)}.md`);
+        writeText(file, `---\nname: ${JSON.stringify(c.name)}\ndeliverable: ${d.code}\nstudio_id: ${c.id}\ncreated: ${c.created_at}${c.archived ? '\narchived: true' : ''}\n---\n\n# ${d.code} · ${c.name}\n\n${c.note}\n`);
+      }
       bump('concept');
     }
 
@@ -290,7 +300,7 @@ export async function migrateStudioData(from, { dryRun = false } = {}) {
       });
       rec.outputs ??= [];
       rec.inputs ??= [];
-      write(path.join(clientDir(w.client), 'projects', w.project, 'generations', `${g.id}.yaml`), rec);
+      write(path.join(layout.generations(w.client, w.project), `${g.id}.yaml`), rec);
       if (!dryRun && !fs.existsSync(path.join(clientDir(w.client), 'projects', w.project, 'project.yaml'))) {
         writeYamlAtomic(path.join(clientDir(w.client), 'projects', w.project, 'project.yaml'), { name: w.project === 'studio-images' ? 'Studio images' : 'Scratch', status: 'active' });
       }
@@ -308,7 +318,7 @@ export async function migrateStudioData(from, { dryRun = false } = {}) {
       addReview(c.generation_id, clean({ id: `ck_${c.id}`, at: c.created_at, author: 'creative-qa', target: c.generation_id, output: 0, action: 'comment', note: c.summary, value: { check: c.status, issues: J(c.issues, []), labels_read: J(c.labels_read, []) } }));
       bump('image_check');
     }
-    for (const [key, rows] of reviewRows) writeJsonl(path.join(paths().clients, key.split('/')[0], 'projects', key.split('/')[1], 'review.jsonl'), rows.sort((a, b) => String(a.at).localeCompare(String(b.at))));
+    for (const [key, rows] of reviewRows) writeJsonl(layout.review(key.split('/')[0], key.split('/')[1]), rows.sort((a, b) => String(a.at).localeCompare(String(b.at))));
 
     // ---- operational history: kept as an archive, not used by the studio ----
     const archive = new Map();
@@ -326,8 +336,8 @@ export async function migrateStudioData(from, { dryRun = false } = {}) {
       bump('compose_layout');
     }
     for (const [c, a] of archive) {
-      writeJsonl(path.join(paths().clients, c, 'archive', 'studio-app-agent-runs.jsonl'), a.runs);
-      writeJsonl(path.join(paths().clients, c, 'archive', 'studio-app-layouts.jsonl'), a.layouts);
+      writeJsonl(path.join(paths().clients, c, '_archive', 'studio-app-agent-runs.jsonl'), a.runs);
+      writeJsonl(path.join(paths().clients, c, '_archive', 'studio-app-layouts.jsonl'), a.layouts);
     }
 
     // ---- media: every blob, verified by hash ----
@@ -358,7 +368,7 @@ export async function migrateStudioData(from, { dryRun = false } = {}) {
     if (missing.length) notes.push(`${missing.length} image file(s) listed in the database were not found on disk: ${missing.map((h) => h.slice(0, 12)).join(', ')}`);
     if (bad.length) notes.push(`${bad.length} image file(s) didn't match their hash and were skipped: ${bad.map((h) => h.slice(0, 12)).join(', ')}`);
     const draftOnly = kVersions.length && !kVersions.some((v) => v.status === 'approved');
-    if (draftOnly) notes.push('No client info was approved in the old studio, so brand.md files are empty templates and everything is in knowledge/ as drafts. Approve rules by moving them into brand.md.');
+    if (draftOnly) notes.push('No client info was approved in the old studio, so brand/brand.md is an empty template and everything is in brand/notes/ as drafts. Approve rules by moving them into brand/brand.md.');
 
     const tables = Object.keys(counts).map((t) => ({ table: t, rows: counts[t], written: wrote[t] ?? 0, ok: (wrote[t] ?? 0) === counts[t] }));
     const ok = tables.every((t) => t.ok) && !bad.length;

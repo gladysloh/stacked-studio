@@ -1,0 +1,82 @@
+category: motion
+name: Motion and dynamic elements
+entries:
+  - id: motion.splash
+    name: Liquid splash
+    aliases: [water splash, crown splash, wave]
+    applies: [product, food_beverage]
+    prompt: "A clear water splash curling around the base of the product, frozen mid-air, droplets sharp, the product itself dry and sharp."
+    use_when: Freshness, hydration, drinks; dynamic hero visuals.
+    watch_out: Splashes swallow labels — keep the splash below the label line.
+    search: ["{category} product splash photography", "{subject} water splash advertising"]
+    related: [placement.floating, light.backlit-glow]
+  - id: motion.pour
+    name: Pour
+    aliases: [pouring, stream]
+    applies: [food_beverage, texture]
+    prompt: "A smooth, glossy stream of the liquid pouring from the top of the frame into a glass, frozen with crisp edges."
+    use_when: Drinks, sauces, oils, honey-like textures.
+    search: ["{subject} pour shot photography"]
+  - id: motion.smear
+    name: Texture smear
+    aliases: [swatch, cream smear, swipe]
+    applies: [texture, product]
+    prompt: "A single confident smear of cream across the surface beside the product, glossy ridges catching the light."
+    use_when: Showing texture; carousel and social.
+    search: ["cream texture smear photography", "{category} swatch smear product shot"]
+    related: [hands.swatch-on-hand, placement.split-frame]
+  - id: motion.drip
+    name: Drip and drop
+    aliases: [droplet, single drop]
+    applies: [texture, product]
+    prompt: "A single drop of serum falling from above, caught just before it lands, perfectly round and glowing."
+    use_when: Potency, purity, serums and oils.
+    search: ["serum drop macro photography"]
+    related: [hands.dropper]
+  - id: motion.condensation
+    name: Condensation droplets
+    aliases: [dewy, chilled, droplets on bottle]
+    applies: [product, food_beverage]
+    prompt: "Fine condensation droplets beaded on the bottle, a few running down, the label still readable."
+    use_when: Chilled drinks, freshness, cooling.
+    search: ["{subject} condensation droplets product photography"]
+    related: [surface.ice]
+  - id: motion.floating-ingredients
+    name: Floating ingredients
+    aliases: [flying ingredients, suspended botanicals]
+    applies: [product, food_beverage]
+    prompt: "Key ingredients floating around the product in mid-air at different depths, some sharp, some softly out of focus."
+    use_when: Ingredient stories with energy.
+    watch_out: Only the brief's ingredients.
+    search: ["{category} product with floating ingredients photography"]
+    related: [placement.floating, placement.ingredient-story]
+  - id: motion.powder-burst
+    name: Powder burst
+    aliases: [dust explosion, colour powder]
+    applies: [product, texture]
+    prompt: "A burst of fine powder exploding outward behind the product, frozen, in the product's shade."
+    use_when: Makeup shades, energy, launches.
+    search: ["{category} powder explosion product photography"]
+  - id: motion.bubbles
+    name: Bubbles and foam
+    aliases: [foam, lather, fizz]
+    applies: [product, texture, food_beverage]
+    prompt: "Soft, dense white foam rising around the product's base, a few clear bubbles floating up."
+    use_when: Cleansers, body wash, sparkling drinks.
+    search: ["{category} foam bubbles product photography"]
+  - id: motion.fabric-flow
+    name: Flowing fabric
+    aliases: [wind-blown fabric, organza flying]
+    applies: [product, model]
+    prompt: "A length of sheer fabric flowing through the frame in a loose S-curve as if caught by wind, behind the product."
+    use_when: Softness with movement, femininity, luxury.
+    search: ["{category} product flowing fabric photography"]
+    related: [surface.fabric, pose.walking]
+  - id: motion.falling-petals
+    name: Falling petals or particles
+    aliases: [petals falling, confetti, snow]
+    applies: [product, model]
+    prompt: "A few petals falling through the frame around the product, frozen at different depths."
+    use_when: Seasonal and festive moods.
+    search: ["{category} product falling petals photography"]
+    related: [surface.botanical]

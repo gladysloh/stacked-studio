@@ -53,6 +53,7 @@ def list_tools(args: dict, out_dir: Path) -> dict:
             {"name": "image_info", "does": "size, mode, format, transparency", "ready": available("media")},
             {"name": "palette", "does": "dominant colours as hex with shares", "ready": available("media")},
             {"name": "cutout", "does": "remove the background, transparent PNG", "ready": available("cutout")},
+            {"name": "blank_check", "does": "flag empty/solid images in a list of paths", "ready": available("media")},
         ]
     }
 
@@ -100,4 +101,23 @@ def cutout(args: dict, out_dir: Path) -> dict:
     return {"files": [{"path": str(dest), "role": "product"}], "width": res.width, "height": res.height}
 
 
-REGISTRY = {"list": list_tools, "image_info": image_info, "palette": palette, "cutout": cutout}
+def blank_check(args: dict, out_dir: Path) -> dict:
+    """Flags near-empty images (solid black/white/flat crops): tiny brightness spread."""
+    Image = _pil()
+    from PIL import ImageStat
+
+    out = []
+    for p in args.get("paths", []):
+        try:
+            with Image.open(os.path.expanduser(p)) as im:
+                g = im.convert("L")
+                g.thumbnail((256, 256))
+                st = ImageStat.Stat(g)
+                std = st.stddev[0]
+                out.append({"path": p, "mean": round(st.mean[0], 1), "stddev": round(std, 2), "blank": std < float(args.get("threshold", 4))})
+        except Exception as e:  # unreadable files are reported, not fatal
+            out.append({"path": p, "error": str(e)})
+    return {"results": out}
+
+
+REGISTRY = {"list": list_tools, "blank_check": blank_check, "image_info": image_info, "palette": palette, "cutout": cutout}

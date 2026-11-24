@@ -5,7 +5,7 @@ import { readJsonl, readYaml, sha256 } from './fsutil.mjs';
 import { paths } from './paths.mjs';
 import { pickProvider } from './providers/index.mjs';
 import { frontmatter } from './skills.mjs';
-import { SCRATCH, clientDir, readClient } from './workspace.mjs';
+import { SCRATCH, clientDir, codeOf, layout, readClient } from './workspace.mjs';
 
 // The local search index (.cache/index.db). It is only a cache: every row comes from files in
 // clients/ (plus the cached Drive listing in .cache/drive/), so it can be deleted at any time and
@@ -75,18 +75,20 @@ function chunksFor(file, client) {
   const out = [];
   const add = (c) => out.push({ project, tags: '', ref: null, ...c });
 
-  if (rel.length === 1 && name === 'brand.md') {
+  const top = rel.slice(0, -1).join('/'); // folder path inside the client
+  if (top === 'brand' && name === 'brand.md') {
     for (const s of sections(fs.readFileSync(file, 'utf8'), 'Brand')) add({ kind: 'brand', status: 'approved', ...s });
   } else if (rel.length === 1 && name === 'client.yaml') {
     const c = readYaml(file, {});
     add({ kind: 'client', status: 'source', title: c.name, body: [c.industry, c.description].filter(Boolean).join('\n') || c.name });
-  } else if (rel[0] === 'knowledge' && name.endsWith('.md')) {
+  } else if (top === 'brand/notes' && name.endsWith('.md')) {
     const text = fs.readFileSync(file, 'utf8');
     const fm = frontmatter(text);
     const status = fm.status === 'approved' ? 'approved' : fm.status === 'unverified' ? 'unverified' : 'draft';
     for (const s of sections(text, fm.title ?? name.replace(/\.md$/, ''))) add({ kind: 'knowledge', status, tags: asText(fm.tags ?? fm.topic), ...s });
-  } else if ((rel[0] === 'products' || rel[0] === 'references' || rel[0] === 'past-work') && name.endsWith('.yaml')) {
-    const kind = { products: 'product', references: 'reference', 'past-work': 'past_work' }[rel[0]];
+  } else if ((rel[0] === 'products' && name === 'product.yaml') || top === 'library/references' || top === 'library/past-work') {
+    if (!name.endsWith('.yaml')) return out;
+    const kind = rel[0] === 'products' ? 'product' : top === 'library/references' ? 'reference' : 'past_work';
     const data = readYaml(file, {});
     const items = Array.isArray(data) ? data : data.items ?? [data];
     for (const it of items) {
@@ -94,25 +96,34 @@ function chunksFor(file, client) {
         kind,
         status: kind === 'product' ? 'source' : it.status ?? 'source',
         title: it.name ?? it.title ?? it.file ?? kind,
-        body: [it.description, it.label_text && `Label: ${it.label_text}`, it.style && `Style: ${it.style}`, it.notes].filter(Boolean).join('\n') || (it.name ?? kind),
-        tags: asText(it.tags),
+        body: [it.take, it.description, it.note, it.label_text && `Label: ${it.label_text}`, it.style && `Style: ${it.style}`, it.subject, it.notes].filter(Boolean).join('\n') || (it.name ?? kind),
+        tags: [asText(it.tags), ...(it.shots ?? []).map((s) => s.replace(/[.-]/g, ' '))].filter(Boolean).join(' '),
         ref: it.sha ?? it.cutouts?.[0]?.sha ?? it.drive_id ?? null,
       });
     }
-  } else if (rel[0] === 'research' && name.endsWith('.yaml')) {
+  } else if (rel[0] === 'library' && rel[1] === 'moodboards' && name.endsWith('.yaml')) {
+    rel.splice(0, 1); // → moodboards/<board>/board.yaml
     const b = readYaml(file, {});
-    add({ kind: 'research', status: 'unverified', title: b.name ?? rel[1], body: [b.notes, ...(b.items ?? []).map((i) => [i.title, i.note].filter(Boolean).join(': '))].filter(Boolean).join('\n') || rel[1], tags: asText(b.tags) });
-  } else if (rel[0] === 'research' && name.endsWith('.md')) {
+    add({ kind: 'research', status: 'unverified', title: b.name ?? rel[1], body: [b.for, b.notes].filter(Boolean).join('\n') || rel[1], tags: asText(b.tags) });
+    // Each reference on its own, findable by what it shows (shot ids) and what to take from it.
+    for (const i of b.items ?? []) {
+      add({ kind: 'research', status: 'unverified', title: `${b.name ?? rel[1]} · ${i.title ?? 'reference'}`, body: [i.take, i.note, i.subject].filter(Boolean).join('\n') || (i.title ?? ''), tags: [...(i.shots ?? []).map((s) => s.replace(/[.-]/g, ' ')), ...(i.tags ?? [])].join(' '), ref: i.sha ?? i.url ?? null });
+    }
+  } else if (rel[0] === 'library' && rel[1] === 'moodboards' && name.endsWith('.md')) {
+    rel.splice(0, 1);
     for (const s of sections(fs.readFileSync(file, 'utf8'), rel[1])) add({ kind: 'research', status: 'unverified', ...s });
   } else if (rel[0] === 'decks' && name === 'slides.md') {
     for (const s of sections(fs.readFileSync(file, 'utf8'), rel[1])) add({ kind: 'deck_slide', status: 'source', ...s, tags: rel[1] });
   } else if (rel[0] === 'decks' && name === 'comments.jsonl') {
     for (const c of readJsonl(file)) add({ kind: 'deck_comment', status: 'unverified', title: `${c.author ?? 'Comment'}${c.slide ? ` · slide ${c.slide}` : ''}${c.resolved ? ' (resolved)' : ''}`, body: [c.quote && `“${c.quote}”`, c.body].filter(Boolean).join('\n'), tags: [rel[1], c.asset_code].filter(Boolean).join(' ') });
-  } else if (project && (name === 'brief.md' || rel[2] === 'concepts') && name.endsWith('.md')) {
-    const kind = rel[2] === 'deliverables' ? 'deliverable' : rel[2] === 'concepts' ? 'concept' : 'brief';
-    const label = kind === 'deliverable' ? rel[3] : kind === 'concept' ? name.replace(/\.md$/, '') : null;
+  } else if (project && (name === 'brief.md' || rel.includes('concepts')) && name.endsWith('.md')) {
+    // projects/<p>/brief.md, projects/<p>/<CODE-name>/brief.md, …/concepts/<c>.md
+    const inDeliverable = rel.length >= 4 && !rel[2].startsWith('_') && rel[2] !== 'concepts';
+    const code = inDeliverable ? codeOf(rel[2]) : null;
+    const kind = rel.includes('concepts') ? 'concept' : inDeliverable ? 'deliverable' : 'brief';
+    const label = kind === 'deliverable' ? code : kind === 'concept' ? [code, name.replace(/\.md$/, '')].filter(Boolean).join(' · ') : null;
     for (const s of sections(fs.readFileSync(file, 'utf8'), label ?? 'Brief')) add({ kind, status: 'source', ...s, title: label && s.title !== label ? `${label} · ${s.title}` : s.title, tags: label ?? '' });
-  } else if (project && rel[2] === 'generations' && name.endsWith('.yaml')) {
+  } else if (project && rel[2] === '_records' && rel[3] === 'generations' && name.endsWith('.yaml')) {
     const g = readYaml(file, {});
     if (g.status === 'done' && !g.is_test) add({ kind: 'generation', status: 'draft', title: [g.deliverable, g.concept, `v${g.version}`].filter(Boolean).join(' · '), body: [g.instruction, g.prompt].filter(Boolean).join('\n'), ref: g.id, tags: g.model ?? '' });
   }
@@ -328,11 +339,11 @@ export async function search(query, { client, project, kinds, statuses, k = 12, 
  */
 export async function clientContext(clientSlug, { query, project, k = 10 } = {}) {
   const c = readClient(clientSlug);
-  const brandFile = path.join(clientDir(clientSlug), 'brand.md');
+  const brandFile = layout.brand(clientSlug);
   const brand = fs.existsSync(brandFile) ? fs.readFileSync(brandFile, 'utf8') : null;
   const out = {
     client: { slug: c.slug, name: c.name, industry: c.industry ?? null, description: c.description ?? null, links: c.links ?? {}, defaults: c.defaults ?? {} },
-    brand: { status: 'approved', file: `clients/${clientSlug}/brand.md`, text: brand },
+    brand: { status: 'approved', file: `clients/${clientSlug}/brand/brand.md`, text: brand },
     how_to_use: 'Follow "approved" items. Use "source" items as the client\'s own facts. Treat "draft" and "unverified" items as hints: say so if you rely on them.',
   };
   if (query) out.relevant = (await search(query, { client: clientSlug, project, k, statuses: ['source', 'draft', 'unverified', 'approved'] })).results.filter((r) => r.kind !== 'brand');
