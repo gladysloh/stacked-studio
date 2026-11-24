@@ -57,7 +57,11 @@ For deck deliverables, every new image is made **fresh** with `image_generate`, 
 6. Use the model that renders small text best for product labels, and check every label letter for letter afterwards.
 7. **Check against the comments before showing it.** Make a table: one row per change the comments ask for (and "keep placement" when they say so), ✓ or ✗ for each image, plus labels. Fixing one thing must not undo another: a placement fix that loses the requested rocks or setting fails. Show the table with the images, and say plainly which ones fail.
 
-**Never edit unless asked.** "Change X", "fix Y", "remove Z" all mean: write the full description again with the change and generate a new image. Use `image_edit` only when the person explicitly says to edit that image.
+**Never edit unless asked, and never rewrite a prompt that worked.** "Change X", "fix Y", "remove Z", "regenerate this but…" all mean:
+1. Take that version's exact prompt from its record (`history`, or `_records/generations/<id>.yaml` → `prompt`), with its inputs (packshots) and model.
+2. Change only the words for what the person named (add a line, swap a word, replace one sentence). Leave every other line exactly as it was.
+3. Generate a new image with `image_generate` (a new version; the old one stays in history), then say in one line what you changed in the prompt.
+Write a new prompt from scratch only for a new direction, or when the person asks for one. Use `image_edit` only when the person explicitly says to edit that image.
 
 ## Review deck
 Each project has a review deck in its Drive folder (`04_Review Decks`): one slide per asset with the current working-deck visual and every version in order, labelled with what changed, the date, model and status, next to the creative idea and open comments. After making or reviewing versions, run `drive_push_versions` then `review_deck` (no link needed after the first time). To free disk space, `prune_rejected` deletes the local copies of rejected versions once Drive holds them (run with `dry_run` first and say what will go). Rejected versions never appear in the review deck (they stay in history and in `02_Rejected` on Drive); the overview only counts them. The deck is updated in place: only sections (cover, overview, each asset) whose content changed are redrawn, on the same slides, so comments stay attached and slides or shapes people add by hand are kept. Each slide's footer date is when it was last redrawn. Rules that protect comments:
