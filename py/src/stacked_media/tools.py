@@ -54,6 +54,12 @@ def list_tools(args: dict, out_dir: Path) -> dict:
             {"name": "palette", "does": "dominant colours as hex with shares", "ready": available("media")},
             {"name": "cutout", "does": "remove the background, transparent PNG", "ready": available("cutout")},
             {"name": "blank_check", "does": "flag empty/solid images in a list of paths", "ready": available("media")},
+            {"name": "thumbnail", "does": "smaller JPEG copy (longest side <= max)", "ready": available("media")},
+            {"name": "crop", "does": "crop a region given as fractions [l, t, r, b]", "ready": available("media")},
+            {"name": "rotate", "does": "tilt an image on white (degrees > 0 = top leans right)", "ready": available("media")},
+            {"name": "trim", "does": "crop away white margins around a packshot", "ready": available("media")},
+            {"name": "dhash", "does": "perceptual fingerprints to match look-alike images", "ready": available("media")},
+            {"name": "layout_guide", "does": "composition-only guide (grey, blurred, flat tones) to use as a layout input", "ready": available("media")},
         ]
     }
 
@@ -120,4 +126,101 @@ def blank_check(args: dict, out_dir: Path) -> dict:
     return {"results": out}
 
 
-REGISTRY = {"list": list_tools, "blank_check": blank_check, "image_info": image_info, "palette": palette, "cutout": cutout}
+def thumbnail(args: dict, out_dir: Path) -> dict:
+    """A smaller JPEG copy (longest side <= max, default 1400) for decks and previews."""
+    Image = _pil()
+    p = _input(args)
+    size = int(args.get("max", 1400))
+    with Image.open(p) as im:
+        im = im.convert("RGB")
+        im.thumbnail((size, size))
+        dest = out_dir / "thumbnail.jpg"
+        im.save(dest, "JPEG", quality=int(args.get("quality", 85)), optimize=True)
+    return {"files": [{"path": str(dest)}], "width": im.width, "height": im.height}
+
+
+def crop(args: dict, out_dir: Path) -> dict:
+    """Crops a region given as fractions of the image: box = [left, top, right, bottom], each 0-1."""
+    Image = _pil()
+    p = _input(args)
+    l, t, r, b = (float(v) for v in args["box"])
+    with Image.open(p) as im:
+        w, h = im.size
+        out = im.convert("RGB").crop((round(l * w), round(t * h), round(r * w), round(b * h)))
+        dest = out_dir / "crop.png"
+        out.save(dest)
+    return {"files": [{"path": str(dest)}], "width": out.width, "height": out.height}
+
+
+def layout_guide(args: dict, out_dir: Path) -> dict:
+    """A composition-only guide from a reference image: greyscale, heavily blurred and flattened into a
+    few tones, so an image model takes placement, scale and depth from it but no colours, textures or
+    surfaces: shapes, positions, tilts and depth stay readable."""
+    Image = _pil()
+    from PIL import ImageFilter, ImageOps
+
+    p = _input(args)
+    with Image.open(p) as im:
+        g = im.convert("L")
+        w, h = g.size
+        g = g.resize((max(1, w // 4), max(1, h // 4)))
+        out = g.filter(ImageFilter.GaussianBlur(float(args.get("blur", 2.5))))
+        out = ImageOps.posterize(ImageOps.autocontrast(out, cutoff=1).convert("RGB"), int(args.get("bits", 3))).convert("L")
+        out = out.resize((w, h))
+        dest = out_dir / "layout-guide.png"
+        out.save(dest)
+    return {"files": [{"path": str(dest), "role": "layout"}], "width": w, "height": h}
+
+
+def trim(args: dict, out_dir: Path) -> dict:
+    """Crops away plain white (or transparent) margins around a packshot, keeping a small border."""
+    Image = _pil()
+    from PIL import ImageChops
+
+    p = _input(args)
+    with Image.open(p) as im:
+        rgba = im.convert("RGBA")
+        flat = Image.new("RGB", rgba.size, (255, 255, 255))
+        flat.paste(rgba, mask=rgba.split()[3])
+        diff = ImageChops.difference(flat, Image.new("RGB", flat.size, (255, 255, 255))).convert("L").point(lambda v: 255 if v > int(args.get("tolerance", 12)) else 0)
+        box = diff.getbbox()
+        if not box:
+            box = (0, 0, flat.width, flat.height)
+        pad = round(max(box[2] - box[0], box[3] - box[1]) * float(args.get("pad", 0.06)))
+        l, t, r, b = max(0, box[0] - pad), max(0, box[1] - pad), min(flat.width, box[2] + pad), min(flat.height, box[3] + pad)
+        out = flat.crop((l, t, r, b))
+        dest = out_dir / "trimmed.png"
+        out.save(dest)
+    return {"files": [{"path": str(dest), "role": "product"}], "width": out.width, "height": out.height}
+
+
+def rotate(args: dict, out_dir: Path) -> dict:
+    """Rotates an image on a white background. degrees > 0 tilts clockwise (top leans right)."""
+    Image = _pil()
+    p = _input(args)
+    with Image.open(p) as im:
+        out = im.convert("RGB").rotate(-float(args.get("degrees", 15)), expand=True, fillcolor=(255, 255, 255), resample=Image.BICUBIC)
+        dest = out_dir / "rotated.png"
+        out.save(dest)
+    return {"files": [{"path": str(dest), "role": "product"}], "width": out.width, "height": out.height}
+
+
+def dhash(args: dict, out_dir: Path) -> dict:
+    """Perceptual fingerprints (64-bit difference hash, hex) for a list of paths and/or shas.
+    Similar-looking images have hashes a few bits apart, whatever their size or compression."""
+    Image = _pil()
+    out = []
+    for item in args.get("items", []):
+        p = _input(item)
+        with Image.open(p) as im:
+            g = im.convert("L").resize((9, 8))
+            px = list(g.getdata())
+        bits = 0
+        for row in range(8):
+            for col in range(8):
+                bits = (bits << 1) | (1 if px[row * 9 + col] > px[row * 9 + col + 1] else 0)
+        out.append({**{k: item[k] for k in ("path", "sha") if item.get(k)}, "hash": f"{bits:016x}"})
+    return {"hashes": out}
+
+
+REGISTRY = {"list": list_tools, "dhash": dhash, "rotate": rotate, "thumbnail": thumbnail, "crop": crop, "layout_guide": layout_guide, "trim": trim, "blank_check": blank_check, "image_info": image_info, "palette": palette, "cutout": cutout}

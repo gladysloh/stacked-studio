@@ -11,7 +11,7 @@ metadata:
 
 1. **Context (only if there's a client):** `client_context` with a query describing the image ("D01 honey jar on marble, warm morning light"). Pull products, palette, lighting notes, open comments.
 2. **Inputs:** choose reference images and give each a `role` and a `note`:
-   - `product` — must be reproduced exactly (packaging, label, shape). Put these first.
+   - `product` — must be reproduced exactly (packaging, label, shape). Put these first. Use each product's front packshot: the front (logo and label text) must face the camera unless the brief or a deck comment says otherwise.
    - `reference` — borrow something specific; say what in the note ("lighting only", "camera angle").
    - `style` — overall look and grade. `person` — talent identity. `layout` — composition.
    Inputs can be files (`path`), earlier images (`generation` + `output`), or cached media (`sha`). For a file on the client's Drive: `search` (kind `drive_file`) → `drive_fetch` → pass its `sha`.

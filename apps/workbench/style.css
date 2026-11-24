@@ -93,3 +93,12 @@ h3 { font-size: 14px; margin: 20px 0 10px; }
 .badge.not_started { color: var(--muted); }
 section.card + section.card { margin-top: 16px; }
 @media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+
+/* Asset page: changes requested and version review */
+.notes ul { list-style: none; padding: 0; margin: 0 0 10px; }
+.notes li { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid #eee; }
+.notes li.done .grow { text-decoration: line-through; color: #888; }
+.notes small { display: block; }
+.notes button.x { border: 0; background: none; color: #999; font-size: 16px; padding: 0 4px; cursor: pointer; }
+.vtile .cap { gap: 6px; }
+.vtile .cap input { min-width: 0; }

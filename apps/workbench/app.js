@@ -194,16 +194,74 @@ async function deliverableView(client, project, code) {
           ask.value = '';
           poll();
         } }, 'Make'))),
-        h('div', { class: 'card' }, h('h3', {}, `Images${d.images.length ? ` · ${d.images.length}` : ''}`),
-          d.images.length
-            ? h('div', { class: 'grid small' }, ...d.images.map((im) => h('a', { class: 'tile', href: `#/image/${im.id}` }, thumb(im.outputs[0]?.sha), h('div', { class: 'cap' }, h('span', {}, `v${im.version}${im.concept ? ` · ${im.concept}` : ''}`), badge(im.outputs.find((o) => o.status === 'approved') ? 'approved' : im.outputs[0]?.status ?? 'new')))))
+        reviewCard(client, project, code, d),
+        h('div', { class: 'card' }, h('h3', {}, `Image histories${d.images.length ? ` · ${d.images.filter((im) => im.outputs.some((o) => o.status !== 'rejected')).length}` : ''}`),
+          d.images.some((im) => im.outputs.some((o) => o.status !== 'rejected'))
+            ? h('div', { class: 'grid small' }, ...d.images.filter((im) => im.outputs.some((o) => o.status !== 'rejected')).map((im) => h('a', { class: 'tile', href: `#/image/${im.id}` }, thumb(im.outputs[0]?.sha), h('div', { class: 'cap' }, h('span', {}, `v${im.version}${im.concept ? ` · ${im.concept}` : ''}`), badge(im.outputs.find((o) => o.status === 'approved') ? 'approved' : im.outputs[0]?.status ?? 'new')))))
             : h('p', { class: 'muted' }, 'No images yet.')),
         d.concepts?.length ? h('div', { class: 'card' }, h('h3', {}, `Concepts · ${d.concepts.length}`), ...d.concepts.map((c) => h('details', {}, h('summary', {}, c.file.replace(/\.md$/, '')), md(c.text.replace(/^---[\s\S]*?---/, ''))))) : null,
         Object.keys(d.deck_images).length ? h('div', { class: 'card' }, h('h3', {}, 'From the deck'),
           ...Object.entries(d.deck_images).map(([role, shas]) => h('div', {}, h('p', { class: 'muted' }, `${role[0].toUpperCase()}${role.slice(1)} · ${shas.length}`), h('div', { class: 'strip' }, ...shas.map((s) => h('a', { href: media(s), target: '_blank', rel: 'noopener' }, h('img', { src: media(s), alt: role, loading: 'lazy' }))))))) : null),
       h('div', { class: 'col gap' },
+        notesCard(client, project, code, d),
         h('div', { class: 'card' }, h('h3', {}, 'Brief'), d.brief ? md(d.brief) : h('p', { class: 'muted' }, 'No brief yet.')),
         d.comments.length ? h('div', { class: 'card' }, h('h3', {}, `Deck comments · ${open.length} open`), ...d.comments.map((c) => h('p', { class: c.resolved ? 'muted' : '' }, h('b', {}, c.author ?? 'Comment'), ' ', c.body, c.resolved ? ' (resolved)' : ''))) : null)));
+}
+
+/** Changes requested (deliverable.yaml review_notes): tick off, remove, add. */
+function notesCard(client, project, code, d) {
+  const notes = d.review_notes ?? [];
+  const edit = async (body) => {
+    await api('notes', { client, project, deliverable: code, ...body });
+    deliverableView(client, project, code);
+  };
+  const text = h('input', { placeholder: 'A change to make, e.g. "warmer light, less shadow"', 'aria-label': 'New change', class: 'grow' });
+  const from = h('input', { placeholder: 'From', 'aria-label': 'From', size: 9 });
+  const add = () => text.value.trim() && edit({ action: 'add', change: text.value, from: from.value });
+  text.addEventListener('keydown', (e) => e.key === 'Enter' && add());
+  const open = notes.filter((n) => !n.done).length;
+  return h('div', { class: 'card notes' },
+    h('h3', {}, `Changes requested${notes.length ? ` · ${open} open` : ''}`),
+    notes.length ? h('ul', {}, ...[...notes].reverse().map((n) => h('li', { class: n.done ? 'done' : '' },
+      h('input', { type: 'checkbox', checked: n.done, 'aria-label': 'Done', onchange: () => edit({ action: n.done ? 'undone' : 'done', index: n.index }) }),
+      h('span', { class: 'grow' }, n.change, h('small', { class: 'muted' }, ` ${[n.from, n.date].filter(Boolean).join(' · ')}`)),
+      h('button', { class: 'x', 'aria-label': 'Remove', title: 'Remove', onclick: () => confirm('Remove this change?') && edit({ action: 'remove', index: n.index }) }, '×')))) : h('p', { class: 'muted' }, 'Nothing requested yet.'),
+    h('div', { class: 'row' }, text, from, h('button', { onclick: add }, 'Add')));
+}
+
+/** Every version of the asset with Approve / Reject and a tweak comment, without opening each image. */
+function reviewCard(client, project, code, d) {
+  const all = d.versions ?? [];
+  const show = ui.vfilter ?? 'new';
+  const list = all.filter((v) => (show === 'all' ? true : show === 'kept' ? v.status !== 'rejected' : v.status === show));
+  const counts = Object.fromEntries(['new', 'approved', 'rejected'].map((s) => [s, all.filter((v) => v.status === s).length]));
+  const filters = h('div', { class: 'filters' }, ...[['new', `Needs review ${counts.new}`], ['approved', `Approved ${counts.approved}`], ['kept', 'Not rejected'], ['rejected', `Rejected ${counts.rejected}`], ['all', 'All']].map(([v, l]) =>
+    h('button', { 'aria-pressed': String(show === v), onclick: () => ((ui.vfilter = v), deliverableView(client, project, code)) }, l)));
+  const tile = (v) => {
+    const note = h('input', { placeholder: 'Tweak…', 'aria-label': `Comment on ${v.name}`, class: 'grow' });
+    const act = (action, extra = {}) => async (e) => {
+      e.preventDefault();
+      e.target.disabled = true;
+      await api('review', { id: v.id, output: v.output, action, ...extra });
+      deliverableView(client, project, code);
+    };
+    const send = (e) => note.value.trim() && act('comment', { note: note.value })(e);
+    note.addEventListener('keydown', (e) => e.key === 'Enter' && send(e));
+    return h('div', { class: 'tile vtile' },
+      h('a', { href: `#/image/${v.id}/${v.output}` }, thumb(v.sha, v.name)),
+      h('div', { class: 'cap col' },
+        h('span', { class: 'row' }, h('b', {}, v.name), h('span', { class: 'grow' }), badge(v.status)),
+        v.instruction ? h('span', { class: 'muted clip', title: v.instruction }, v.instruction) : null,
+        ...(v.comments ?? []).slice(-2).map((c) => h('span', { class: 'clip', title: c.note }, h('b', {}, c.author), ' ', c.note)),
+        h('div', { class: 'row' }, note, h('button', { onclick: send, 'aria-label': 'Add comment' }, '↵')),
+        h('div', { class: 'row' },
+          v.status === 'approved' ? null : h('button', { class: 'ok', onclick: act('approve') }, 'Approve'),
+          v.status === 'rejected' ? null : h('button', { class: 'bad', onclick: act('reject') }, 'Reject'))));
+  };
+  return h('div', { class: 'card' },
+    h('div', { class: 'row' }, h('h3', { style: 'margin:0' }, `Review · ${all.length} version${all.length === 1 ? '' : 's'}`)),
+    filters,
+    list.length ? h('div', { class: 'grid small' }, ...list.map(tile)) : h('p', { class: 'muted' }, 'Nothing here.'));
 }
 
 // ---------- All images (flat board) ----------

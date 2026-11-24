@@ -104,5 +104,13 @@ export function deliverablePage(client, project, code) {
   const section = sectionFor(client, project, code);
   for (const im of section?.images ?? []) if (!im.blank) (roles[`${section.name} · ${im.role}`] ??= []).push(im.sha);
   const concepts = fs.existsSync(path.join(dir, 'concepts')) ? fs.readdirSync(path.join(dir, 'concepts')).filter((n) => n.endsWith('.md')).map((n) => ({ file: n, text: fs.readFileSync(path.join(dir, 'concepts', n), 'utf8') })) : [];
-  return { client, project, code, section: section?.name ?? null, folder: path.relative(clientDir(client), dir), concepts, status: deliverableSummary(client, project, code, gens).status, brief, deck_images: roles, images, comments: comments.sort((a, b) => Number(a.resolved) - Number(b.resolved)) };
+  // Every version (each output of each image), newest first, for reviewing on the asset page.
+  const versions = gens
+    .filter((g) => g.status === 'done' && !g.is_test)
+    .flatMap((g) => {
+      const r = withReview(g);
+      return r.outputs.map((o, output) => ({ id: g.id, output, name: `${g.id.slice(-6)}${r.outputs.length > 1 ? ` · ${output + 1}` : ''}`, version: g.version, sha: o.sha, status: o.status, instruction: g.instruction ?? null, created: g.created, comments: o.comments }));
+    });
+  const review_notes = (meta.review_notes ?? []).map((n, index) => ({ index, ...n, done: Boolean(n.done) }));
+  return { client, project, code, section: section?.name ?? null, folder: path.relative(clientDir(client), dir), concepts, status: deliverableSummary(client, project, code, gens).status, brief, deck_images: roles, images, versions, review_notes, comments: comments.sort((a, b) => Number(a.resolved) - Number(b.resolved)) };
 }

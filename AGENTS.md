@@ -6,7 +6,7 @@ stacked-studio is a local creative production toolkit: research, concepts, image
 
 1. **Find the capability.** Read `skills/studio/SKILL.md` first. It maps what the person wants to a skill. Then read that skill. Claude Code finds skills in `.claude/skills/` automatically. Other agents can call `studio_capabilities` to get the catalog, or a skill's full text by name.
 2. **Start where the person is.** A prompt → make the image. An image plus a change → edit it. Don't make anyone go through research, a brief or concepts unless they ask for them.
-3. **Client work:** call `client_context` first. The client's **working deck** (Google Slides, linked in `client.yaml`) is the source of truth for deliverables, messaging and comments: re-sync it before deliverable work, and when a local file disagrees with it, the deck wins. Follow the **approved** rules, use **source** items as the client's facts, and treat **draft** and **unverified** items as hints. Without a client, work goes to `clients/_scratch/`.
+3. **Client work:** call `client_context` first. The client's **working deck** (Google Slides, linked in `client.yaml`) is the source of truth for deliverables, messaging and comments: re-sync it before deliverable work, and when a local file disagrees with it, the deck wins. New images are always generated new (never by editing, unless the person explicitly asks for an edit) from a full written description plus the front product packshots as the only image inputs; the old visual and slide references are studied and described in words, not passed in: see "Making a deliverable's image" in `skills/studio/SKILL.md`. Follow the **approved** rules, use **source** items as the client's facts, and treat **draft** and **unverified** items as hints. Without a client, work goes to `clients/_scratch/`.
 4. **Images only through the studio:** use `image_generate`, `image_edit`, `image_upscale` and `image_compare`. Never call image APIs directly or save images some other way, because only these tools record the history.
 5. **Approval is the person's decision.** Use `review` with approve or reject only when they say so.
 
@@ -22,6 +22,8 @@ stacked-studio is a local creative production toolkit: research, concepts, image
 | `image_edit` | Changes to an image: mode `edit` makes the next version, mode `branch` starts a new direction |
 | `image_upscale`, `image_compare` | A bigger version; a side-by-side comparison with a prompt diff and the pick |
 | `history`, `review` | Every version of an image; approve, reject, rate, like, comment |
+| `review_notes` | An asset's "changes requested" list: list, add, mark done, remove (shown on the review deck and in the Workbench) |
+| `review_deck`, `prune_rejected` | Keep the project's review deck up to date in place (comments stay attached; `paused` and `shortlist` in project.yaml); free disk space from rejected images kept on Drive |
 | `drive_index`, `drive_fetch`, `drive_save` | The client's Google Drive folder: make it searchable, download a file once, save an image (link recorded) |
 | `deck_import` | Import or re-sync a Google Slides deck: text, notes, every comment thread |
 | `deck_import_file` | File a downloaded deck's (.pptx) images: asset slides → their deliverables, section mood/overview → the project's sections, the rest → library references |

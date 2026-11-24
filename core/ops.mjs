@@ -5,7 +5,7 @@ import { listProviders } from './providers/index.mjs';
 import { addReview, history, listGenerations, REVIEW_ACTIONS, requireGeneration, withReview } from './records.mjs';
 import { catalog, readSkill } from './skills.mjs';
 import { spendSummary } from './spend.mjs';
-import { listClients, listProjects, resolveClient } from './workspace.mjs';
+import { ensureProject, listClients, listProjects, resolveClient } from './workspace.mjs';
 
 // The studio's operations, defined once. The MCP server, the CLI (`studio run <op>`) and the
 // Workbench all call these, so every interface behaves the same. Model knowledge lives in skills;
@@ -32,6 +32,7 @@ const imageOpts = {
   size: z.enum(['1K', '2K', '4K']).optional(),
   aspect: z.string().optional().describe('e.g. 4:5, 1:1, 9:16, 16:9'),
   allow_text: z.boolean().optional().describe('Allow headlines or copy in the image. Default: only text printed on the product.'),
+  use_look: z.boolean().optional().describe('false to leave out the project colour palette (looks/) for this image'),
   context_used: z.array(z.object({ kind: z.string(), ref: z.string(), version: z.string().optional() })).optional().describe('Client knowledge you relied on (from client_context), so the record shows it'),
   request_id: z.string().optional().describe('A unique id for this request: repeating it returns the first result instead of paying twice'),
 };
@@ -195,7 +196,17 @@ export const OPS = {
     run: async ({ id, output = 0, action, value, note }) => {
       requireGeneration(id);
       addReview({ target: id, output, action, value: value ?? null, note: note ?? null });
-      return summarize(requireGeneration(id));
+      let drive = null;
+      if (action === 'approve' || action === 'reject') {
+        // A version already saved to Drive moves to 03_Final or 02_Rejected. Never blocks the review.
+        try {
+          const { placeSaved } = await import('./google/studio-drive.mjs');
+          drive = await placeSaved(id, output);
+        } catch (err) {
+          drive = { moved: false, error: err.message };
+        }
+      }
+      return { ...summarize(requireGeneration(id)), ...(drive ? { drive } : {}) };
     },
   },
 
@@ -219,6 +230,76 @@ export const OPS = {
     run: async ({ file }) => {
       const { fetchFile } = await import('./google/drive.mjs');
       return fetchFile(file);
+    },
+  },
+
+  drive_project_folders: {
+    title: 'Make project folders on Drive',
+    description: "Creates (or finds) a project's numbered folders in the client's Drive folder: <project name>/01_Generated (needs review), 02_Rejected, 03_Final (approved), 04_Review Decks, each with one subfolder per asset code. Safe to run again.",
+    input: { client: z.string(), project: z.string() },
+    run: async ({ client, project }) => {
+      const { ensureProjectFolders } = await import('./google/studio-drive.mjs');
+      return ensureProjectFolders(resolveClient(client), ensureProject(resolveClient(client), project, { create: false }));
+    },
+  },
+
+  drive_push_versions: {
+    title: 'Put every version on Drive',
+    description: "Uploads every version of a project that isn't on Drive yet into <project>/01_Generated/<CODE>/ (or 02_Rejected / 03_Final by status), and moves saved ones whose status changed. Safe to run again.",
+    input: { client: z.string(), project: z.string() },
+    run: async ({ client, project }) => {
+      const c = resolveClient(client);
+      const { pushProjectVersions } = await import('./google/studio-drive.mjs');
+      return pushProjectVersions(c, ensureProject(c, project, { create: false }));
+    },
+  },
+
+  review_deck: {
+    title: 'Update the review deck',
+    description: "Builds the project's review deck (cover, overview, then one slide per asset: the current working-deck visual and every version in order, each with what changed, date, model and status, next to the creative idea and open comments) and keeps it up to date in a Google Slides file in the project's 04_Review Decks folder, keeping its link. Pass `deck` (a Slides link) the first time; later runs reuse it. Updates in place: only sections (cover, overview, each asset) whose content changed are redrawn, on the same slides, so comments and anything added by hand stay. `rebuild: true` replaces the whole file instead (loses comments).",
+    input: {
+      client: z.string(),
+      project: z.string(),
+      deck: z.string().optional().describe('Google Slides link, the first time'),
+      only: z.array(z.string()).optional().describe('Only these asset codes'),
+      cover: z.string().optional().describe('Image sha for a full-bleed cover (kept for later runs)'),
+      rebuild: z.boolean().optional().describe('Replace the whole file instead of updating in place (comments on slides are lost)'),
+    },
+    run: async ({ client, project, deck, only, cover, rebuild }) => {
+      const c = resolveClient(client);
+      const { publishReviewDeck } = await import('./review-deck.mjs');
+      return publishReviewDeck(c, ensureProject(c, project, { create: false }), { deck, only, cover, rebuild });
+    },
+  },
+
+  prune_rejected: {
+    title: 'Free disk space from rejected images',
+    description: "Deletes this computer's copies of a project's REJECTED versions, keeping them on Drive (02_Rejected). Uploads any rejected version not on Drive first; deletes only when Drive has a live file with the same checksum, and never an image a kept version, deliverable or product still uses. History and Drive links stay. dry_run shows what would go.",
+    input: { client: z.string(), project: z.string(), dry_run: z.boolean().optional() },
+    run: async ({ client, project, dry_run }) => {
+      const c = resolveClient(client);
+      const { pruneRejected } = await import('./prune.mjs');
+      return pruneRejected(c, ensureProject(c, project, { create: false }), { dryRun: Boolean(dry_run) });
+    },
+  },
+
+  review_notes: {
+    title: 'Changes requested',
+    description: "An asset's \"changes requested\" list (deliverable.yaml review_notes), shown on the review deck and used for the next prompts. action list (default), add (change, from), done / undone (index, marks a change as handled), remove (index).",
+    input: {
+      client: z.string(),
+      project: z.string(),
+      deliverable: z.string(),
+      action: z.enum(['list', 'add', 'done', 'undone', 'remove']).optional(),
+      change: z.string().optional(),
+      from: z.string().optional().describe('Who asked for it'),
+      index: z.number().int().min(0).optional(),
+    },
+    run: async ({ client, project, deliverable, action = 'list', change, from, index }) => {
+      const c = resolveClient(client);
+      const p = ensureProject(c, project, { create: false });
+      const { listNotes, editNotes } = await import('./review-notes.mjs');
+      return { client: c, project: p, deliverable, notes: action === 'list' ? listNotes(c, p, deliverable) : editNotes(c, p, deliverable, { action, change, from, index }) };
     },
   },
 
@@ -304,8 +385,10 @@ export const OPS = {
       client: z.string(),
       name: z.string(),
       label_text: z.string().optional().describe('The label exactly as printed, lines separated by " / "'),
+      shape: z.string().optional().describe('What the pack looks like, for prompts: form, cap, finish, colours, windows (e.g. "slim tall gold cylinder, flat gold cap, clear band at the base showing beige powder")'),
+      size: z.string().optional().describe('Real size, always added to prompts (e.g. "compact 60 g travel can, about the length of a hand")'),
       notes: z.string().optional().describe('Known quirks, e.g. "small print always garbles: keep label front-facing"'),
-      image: z.object({ path: z.string().optional(), sha: z.string().optional() }).optional(),
+      image: z.object({ path: z.string().optional(), sha: z.string().optional(), name: z.string().optional().describe('What the photo shows, e.g. "60ml front"'), drive_id: z.string().optional() }).optional(),
       style: z.enum(['packshot', 'group', 'angles', 'lifestyle']).optional(),
       cutout: z.boolean().optional(),
     },

@@ -36,3 +36,20 @@ def test_palette(tmp_path):
 
 def test_unknown_tool():
     assert "Unknown media tool" in run("nope", {})["error"]
+
+
+def test_thumbnail_crop_and_layout_guide(tmp_path, monkeypatch):
+    src = make(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    t = run("thumbnail", {"path": str(src), "max": 10})
+    assert t["width"] == 10 and t["height"] == 5
+    c = run("crop", {"path": str(src), "box": [0.5, 0, 1, 1]})
+    assert c["width"] == 20 and c["height"] == 20
+    g = run("layout_guide", {"path": str(src)})
+    out = PIL.open(g["files"][0]["path"])
+    assert out.mode == "L" and out.size == (40, 20)  # greyscale: no colour to copy
+
+
+def test_rotate_tilts_clockwise(tmp_path):
+    out = run("rotate", {"path": str(make(tmp_path)), "degrees": 90})
+    assert out["width"] == 20 and out["height"] == 40

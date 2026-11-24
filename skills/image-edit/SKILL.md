@@ -18,6 +18,8 @@ metadata:
 | Add an element from another image | `image_edit` with that image as an input and a note saying where it goes |
 | Bigger file for print/final | `image_upscale` |
 
+Products keep their front (logo and label text) facing the camera through every edit, unless the brief or a comment says otherwise. If an edit turns a product away, fix that first.
+
 The source image is passed automatically — don't add it again. Pick the output with `output` when the image had variations.
 
 ## Write the edit prompt

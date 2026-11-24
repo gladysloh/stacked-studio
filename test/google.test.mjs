@@ -67,10 +67,14 @@ function fakeGoogle() {
     if (fm) {
       const f = files[fm[1]];
       if (!f) return { status: 404, json: { error: { message: 'File not found' } } };
+      if (req.method === 'PATCH' && url.searchParams.get('addParents')) {
+        f.parents = [url.searchParams.get('addParents')];
+        return { json: f };
+      }
       if (fm[2] === '/comments') {
         return { json: { comments: [
           { id: 'cm1', author: { displayName: 'Client' }, content: 'ABC005: make the jar bigger', resolved: false, createdTime: '2026-11-01T00:00:00Z', replies: [{ id: 'r1', author: { displayName: 'Studio' }, content: 'Will do' }] },
-          { id: 'cm2', author: { displayName: 'Client' }, content: 'Love this', quotedFileContent: { value: 'Golden hour' }, resolved: true },
+          { id: 'cm2', author: { displayName: 'Client' }, content: 'Love this', quotedFileContent: { value: 'Golden hour' }, resolved: true, anchor: JSON.stringify({ type: 'page', pages: ['p2'] }) },
         ] } };
       }
       if (fm[2] === '/export') return { raw: Buffer.from('%PDF-1.4 fake'), type: 'application/pdf' };
@@ -168,7 +172,7 @@ test('drive: link a client folder, index it for search, fetch a file once', asyn
   assert.equal(img.inputs[0].role, 'product');
 });
 
-test('drive: init makes the client folder in the Shared Drive; save uploads once, under Studio/<project>', async () => {
+test('drive: init makes the client folder in the Shared Drive; save uploads once, into the project numbered folders (approved → 03_Final)', async () => {
   await signedIn();
   const { importTeam } = await import('../core/share.mjs');
   const dir = path.join(t.dir, 'pack');
@@ -187,17 +191,41 @@ test('drive: init makes the client folder in the Shared Drive; save uploads once
   const img = await runOp('image_generate', { prompt: 'x', client: slug, project: 'Spring', deliverable: 'D01' });
   await runOp('review', { id: img.id, action: 'approve' });
   const s1 = await runOp('drive_save', { id: img.id });
-  assert.match(s1.name, /^D01_v1_APPROVED_/);
-  const studioFolder = Object.values(g.state.files).find((f) => f.name === 'Studio');
-  const projFolder = Object.values(g.state.files).find((f) => f.name === 'spring');
-  assert.deepEqual(studioFolder.parents, ['clientroot0001']);
-  assert.deepEqual(g.state.files[s1.drive_id].parents, [projFolder.id]);
+  assert.match(s1.name, /^D01_v1_/);
+  const byName = (n, parent) => Object.values(g.state.files).find((f) => f.name === n && (!parent || f.parents?.[0] === parent));
+  const projFolder = byName('Spring');
+  const finalFolder = byName('03_Final', projFolder.id);
+  assert.deepEqual(projFolder.parents, ['clientroot0001']);
+  for (const n of ['01_Generated', '02_Rejected', '04_Review Decks']) assert.ok(byName(n, projFolder.id), n);
+  // Approved → 03_Final/<asset code>/
+  assert.deepEqual(g.state.files[s1.drive_id].parents, [byName('D01', finalFolder.id).id]);
+  assert.equal((await import('../core/fsutil.mjs')).readYaml(path.join(t.ws, 'clients', slug, 'projects', 'spring', 'project.yaml')).links.drive.final, finalFolder.id);
   assert.match(g.state.files[s1.drive_id].description, new RegExp(img.id));
   const s2 = await runOp('drive_save', { id: img.id });
   assert.equal(s2.already_saved, true);
   assert.equal(g.state.uploads.length, 1);
   const h = await runOp('history', { id: img.id });
   assert.equal(h.versions[0].outputs[0].drive_id, s1.drive_id);
+
+  // Rejecting it later moves the same file to 02_Rejected/D01 (no new upload).
+  const r = await runOp('review', { id: img.id, action: 'reject' });
+  assert.equal(r.drive.moved, true);
+  assert.deepEqual(g.state.files[s1.drive_id].parents, [byName('D01', byName('02_Rejected', projFolder.id).id).id]);
+  assert.equal(g.state.uploads.length, 1);
+
+  // Pushing the project uploads versions not on Drive yet into 01_Generated/<code>/, and leaves placed ones.
+  const img2 = await runOp('image_generate', { prompt: 'y', client: slug, project: 'Spring', deliverable: 'D02' });
+  // Free test images stay off Drive by default.
+  assert.equal((await runOp('drive_push_versions', { client: slug, project: 'Spring' })).uploaded, 0);
+  const sd2 = await import('../core/google/studio-drive.mjs');
+  const push = await sd2.pushProjectVersions(slug, 'spring', { includeTests: true });
+  assert.equal(push.uploaded, 1);
+  assert.equal(push.in_place, 1);
+  const up = g.state.uploads.at(-1);
+  assert.deepEqual(up.meta.parents, [byName('D02', byName('01_Generated', projFolder.id).id).id]);
+  assert.match(up.meta.name, new RegExp(img2.id.slice(-6)));
+  const again2 = await sd2.pushProjectVersions(slug, 'spring', { includeTests: true });
+  assert.equal(again2.uploaded, 0);
 });
 
 test('slides: deck import writes slides, notes and comments; re-import reports nothing new', async () => {
@@ -216,6 +244,9 @@ test('slides: deck import writes slides, notes and comments; re-import reports n
   const comments = fs.readFileSync(path.join(dir, 'comments.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
   assert.equal(comments[0].asset_code, 'ABC005');
   assert.equal(comments[0].replies[0].body, 'Will do');
+  // A comment anchored to a slide gets that slide's number and code, even without the code in its text.
+  assert.equal(comments[1].slide, 2);
+  assert.equal(comments[1].asset_code, 'ABC005');
   const again = await runOp('deck_import', { client: slug, deck: 'deck000000001' });
   assert.equal(again.new_comments, 0);
   const s = await runOp('search', { query: 'jar bigger', client: slug, kinds: ['deck_comment'] });

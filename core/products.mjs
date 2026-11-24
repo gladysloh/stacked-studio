@@ -17,7 +17,7 @@ export function listProducts(client) {
     fs.existsSync(base)
       ? fs.readdirSync(base).filter((n) => !n.startsWith('_') && fs.existsSync(path.join(base, n, 'product.yaml'))).sort().map((slug) => {
           const p = readYaml(path.join(base, slug, 'product.yaml'), {});
-          return { slug, name: p.name ?? slug, group, includes: p.includes ?? null, label_text: p.label_text ?? null, notes: p.notes ?? null, cutouts: (p.cutouts ?? []).map((c) => ({ ...c, file: mediaPath(c.sha) })) };
+          return { slug, name: p.name ?? slug, group, includes: p.includes ?? null, label_text: p.label_text ?? null, shape: p.shape ?? null, size: p.size ?? null, notes: p.notes ?? null, cutouts: (p.cutouts ?? []).map((c) => ({ ...c, file: mediaPath(c.sha) })) };
         })
       : [];
   return [...at(dir(client), false), ...at(path.join(dir(client), '_groups'), true)];
@@ -33,7 +33,7 @@ export function findProduct(client, ref) {
  * With `cutout: true` and the media tools installed, the background is removed first and the cutout
  * is stored alongside the original.
  */
-export async function addProduct(client, { name, label_text, notes, image, style = 'packshot', cutout = false, source = null }) {
+export async function addProduct(client, { name, label_text, shape, size, notes, image, style = 'packshot', cutout = false, source = null }) {
   if (client === SCRATCH) throw new StudioError('Products belong to a client.', 'Pass a client.');
   if (!name?.trim()) throw new StudioError('A product needs a name.');
   const slug = slugify(name);
@@ -41,13 +41,15 @@ export async function addProduct(client, { name, label_text, notes, image, style
   const file = path.join(dir(client), existing?.group ? '_groups' : '', slug, 'product.yaml');
   const p = readYaml(file, null) ?? { name: name.trim(), cutouts: [] };
   if (label_text) p.label_text = label_text;
+  if (shape) p.shape = shape;
+  if (size) p.size = size;
   if (notes) p.notes = notes;
   p.cutouts ??= [];
   const added = [];
   if (image) {
     const m = image.path ? importFile(image.path) : readMedia(image.sha);
     if (!m) throw new StudioError("That image isn't in the local cache.", 'Pass a file path, or fetch it from Drive first.');
-    const entry = { sha: m.sha, mime: m.mime, width: m.width ?? null, height: m.height ?? null, style, kind: 'photo', ...(source ? { source } : {}) };
+    const entry = { sha: m.sha, mime: m.mime, width: m.width ?? null, height: m.height ?? null, style, kind: 'photo', ...(image.name ? { name: image.name } : {}), ...(image.drive_id ? { drive_id: image.drive_id } : {}), ...(source ? { source } : {}) };
     if (!p.cutouts.some((c) => c.sha === entry.sha)) {
       p.cutouts.push(entry);
       added.push(entry);

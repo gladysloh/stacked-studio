@@ -77,6 +77,7 @@ export async function makeImage(input) {
     concept = null,
     context_used = [],
     run_id = process.env.STACKED_RUN_ID ?? null,
+    use_look = true,
   } = input;
 
   if (!['new', 'edit', 'branch', 'upscale'].includes(mode)) throw new StudioError(`Unknown mode "${mode}".`);
@@ -150,11 +151,22 @@ export async function makeImage(input) {
     is_test: provider.id === 'test',
   };
 
+  // Product images get their identity spelled out next to them: name, shape and exact label text from
+  // products/<p>/product.yaml. Models reproduce packaging far more faithfully when told what each
+  // reference is. Recorded on the version as product_identity.
+  const identity = client && kind === 'image' ? await productIdentity(client, loaded) : null;
+  if (identity) base.product_identity = identity;
+  // A project look (projects/<p>/looks/*.yaml, applies_to: [codes]) pins shared colours for a group of
+  // assets so they come out consistent. Added at render time; recorded as look_used.
+  const { lookForCode, lookPromptBlock } = await import('./looks.mjs');
+  const look = kind === 'image' && use_look !== false && base.deliverable ? lookForCode(client, project, base.deliverable) : null;
+  if (look) base.look_used = { name: look.name, file: look.file };
+  const sendPrompt = [prompt, identity, look ? lookPromptBlock(look, base.deliverable) : null].filter(Boolean).join('\n\n');
   const refs = loaded.map((l) => ({ data: l.data, mime: l.mime, role: l.role }));
   let result;
   try {
     if (kind === 'upscale') result = await provider.upscale({ key, source: refs[0], aspect: useAspect });
-    else result = await provider.image({ key, prompt, n, model: resolvedModel, size: useSize, aspect: useAspect, references: refs, noText: !allow_text });
+    else result = await provider.image({ key, prompt: sendPrompt, n, model: resolvedModel, size: useSize, aspect: useAspect, references: refs, noText: !allow_text });
   } catch (err) {
     writeGeneration({ ...base, status: 'failed', error: err.message, outputs: [], cost_usd: 0 });
     throw new StudioError(err.message);
@@ -168,6 +180,30 @@ export async function makeImage(input) {
   writeGeneration(rec);
   recordSpend({ provider: provider.id, model: rec.model, cost_usd: rec.cost_usd, fingerprint, record_id: id });
   return withReview(rec);
+}
+
+/** "Reference image N is <product>: <shape>. Its label reads exactly: …" for each product input. */
+async function productIdentity(client, loaded) {
+  if (client === SCRATCH || !loaded.some((l) => l.role === 'product')) return null;
+  const { listProducts } = await import('./products.mjs');
+  const products = listProducts(client);
+  const bySha = new Map();
+  for (const p of products) for (const c of p.cutouts ?? []) {
+    bySha.set(c.sha, p);
+    if (c.from) bySha.set(c.from, p);
+  }
+  const lines = [];
+  // One product: the photo says it all; describing its shape too can fight the photo. Shapes only help
+  // tell several products apart.
+  const several = loaded.filter((l) => l.role === 'product').length > 1;
+  loaded.forEach((l, i) => {
+    if (l.role !== 'product') return;
+    const p = bySha.get(l.sha);
+    if (!p || (!p.shape && !p.label_text && !p.size)) return;
+    // Size is always given (even for one product): a photo on white shows no scale.
+    lines.push(`- Reference image ${i + 1} is ${p.name}${several && p.shape ? `: ${p.shape}` : ''}.${p.size ? ` Real size: ${p.size}.` : ''}${p.label_text ? ` Its front label reads exactly, top to bottom, line by line: ${p.label_text}.` : ''}`);
+  });
+  return lines.length ? `PRODUCT REFERENCES (reproduce each exactly as photographed: shape, cap, finish, colours, and every label line letter for letter):\n${lines.join('\n')}` : null;
 }
 
 /** Records a side-by-side comparison, and (optionally) which one was picked. */

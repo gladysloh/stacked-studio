@@ -13,7 +13,7 @@ import { downloadTo, ensurePath, findByName, getFile, indexClientDrive, updateFi
 // How the studio uses Drive:
 //   team.yaml  google.root_folder_id   the team's Shared Drive (or a folder in it)
 //   client.yaml links.drive_folder     each client's folder, made by `studio drive init <client>`
-//   saved images go to  <client folder>/<save_path>/<project>/   (save_path default "Studio")
+//   saved images go to  <client folder>/<project name>/01_Generated (or 03_Final once approved)
 
 const folderLink = (id) => `https://drive.google.com/drive/folders/${id}`;
 
@@ -82,12 +82,94 @@ export async function indexDrive(client) {
  * Saves an image to Drive and records it ("save" in the review log, with the Drive id). Saving the
  * same image again returns the first upload instead of making a copy.
  */
+// Project folders on Drive, for generated images and review. The folder an image is in is its status,
+// with one subfolder per asset (deliverable code):
+//   <client folder>/<project name>/01_Generated/<CODE>/   needs review (every new version)
+//                                 02_Rejected/<CODE>/    didn't make it
+//                                 03_Final/<CODE>/       approved
+//                                 04_Review Decks/
+// Approving or rejecting a saved image moves its Drive file (same id and link).
+// The team can rename them in team.yaml (google.project_folders); the keys stay the same.
+export const PROJECT_FOLDERS = { working: '01_Generated', rejected: '02_Rejected', final: '03_Final', decks: '04_Review Decks' };
+const statusFolder = (status) => (status === 'approved' ? 'final' : status === 'rejected' ? 'rejected' : 'working');
+export const projectFolderNames = () => ({ ...PROJECT_FOLDERS, ...(teamConfig().google?.project_folders ?? {}) });
+
+/** Creates (or finds) the project's numbered folders in the client's Drive folder and records their ids in project.yaml. */
+export async function ensureProjectFolders(client, project) {
+  const base = clientFolderId(client);
+  if (!base) throw new StudioError(`${client} has no Drive folder yet.`, `studio drive init ${client}`);
+  const file = path.join(clientDir(client), 'projects', project, 'project.yaml');
+  const meta = readYaml(file, null);
+  if (!meta) throw new StudioError(`There's no project "${project}" for ${client}.`);
+  const top = await ensurePath(base, meta.name ?? project);
+  const folders = { folder: top.id };
+  for (const [key, name] of Object.entries(projectFolderNames())) folders[key] = (await ensurePath(top.id, name)).id;
+  meta.links = { ...(meta.links ?? {}), drive: folders };
+  writeYamlAtomic(file, meta);
+  return { client, project, name: meta.name ?? project, url: `https://drive.google.com/drive/folders/${top.id}`, folders };
+}
+
+/** The Drive folder id for one of a project's numbered folders, creating them on first use. */
+export async function projectFolder(client, project, key) {
+  const known = readYaml(path.join(clientDir(client), 'projects', project, 'project.yaml'), {})?.links?.drive;
+  if (known?.[key]) return known[key];
+  return (await ensureProjectFolders(client, project)).folders[key];
+}
+
+/** The folder a version belongs in: <status folder>/<asset code>. */
+async function versionFolder(g, status) {
+  return (await ensurePath(await projectFolder(g.client, g.project, statusFolder(status)), g.deliverable ?? 'Other')).id;
+}
+
+/**
+ * Moves a saved version's Drive file to the folder for its current status (same file, same link).
+ * Returns null when it was never saved; { moved: false } when it's already in place.
+ */
+export async function placeSaved(id, output = 0) {
+  const g = withReview(requireGeneration(id));
+  const o = g.outputs[output];
+  const prior = reviewsFor(g.client, g.project).filter((e) => e.target === id && (e.output ?? 0) === output && e.action === 'save').at(-1);
+  if (!o || !prior?.value?.drive_id || g.client === SCRATCH) return null;
+  const want = await versionFolder(g, o.status);
+  const meta = await getFile(prior.value.drive_id);
+  const parents = meta.parents ?? [];
+  if (parents.includes(want)) return { id, output, moved: false, status: o.status };
+  const { gfetch, hosts } = await import('./api.mjs');
+  await gfetch(`${hosts().drive}/files/${meta.id}?addParents=${want}&removeParents=${parents.join(',')}&supportsAllDrives=true&fields=id`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: '{}' });
+  addReview({ target: id, output, action: 'save', value: { ...prior.value, folder_id: want } });
+  return { id, output, moved: true, status: o.status, to: statusFolder(o.status) };
+}
+
+/** Uploads every version of a project that isn't on Drive yet, and moves saved ones to match their status. */
+export async function pushProjectVersions(client, project, { includeTests = false } = {}) {
+  const { listGenerations } = await import('../records.mjs');
+  const out = { client, project, uploaded: 0, moved: 0, in_place: 0, by_status: {} };
+  // Free test images (no key) never go to Drive unless asked.
+  for (const g0 of listGenerations({ client, project, limit: 100_000, includeTests })) {
+    if (g0.status !== 'done' || (g0.is_test && !includeTests)) continue;
+    const g = withReview(g0);
+    for (let i = 0; i < g.outputs.length; i++) {
+      const st = g.outputs[i].status;
+      out.by_status[st] = (out.by_status[st] ?? 0) + 1;
+      const r = await placeSaved(g.id, i);
+      if (!r) {
+        if (!mediaPath(g.outputs[i].sha)) continue;
+        await saveToDrive({ id: g.id, output: i });
+        out.uploaded++;
+      } else if (r.moved) out.moved++;
+      else out.in_place++;
+    }
+  }
+  const folders = readYaml(path.join(clientDir(client), 'projects', project, 'project.yaml'), {})?.links?.drive;
+  return { ...out, url: folders?.folder ? `https://drive.google.com/drive/folders/${folders.folder}` : null };
+}
+
 export async function saveToDrive({ id, output = 0, folder = null, name = null }) {
   const g = withReview(requireGeneration(id));
   const o = g.outputs[output];
   if (!o) throw new StudioError(`That image has ${g.outputs.length} outputs.`);
   const prior = reviewsFor(g.client, g.project).filter((e) => e.target === id && (e.output ?? 0) === output && e.action === 'save').at(-1);
-  if (prior && !folder) return { id, output, already_saved: true, ...prior.value };
+  if (prior && !folder) return { id, output, already_saved: true, ...prior.value, ...((await placeSaved(id, output))?.moved ? { moved_to: statusFolder(o.status) } : {}) };
   const file = mediaPath(o.sha);
   if (!file) throw new StudioError("The image file isn't on this computer.", 'Fetch it first (drive_fetch), or ask the teammate who made it to save it.');
 
@@ -97,11 +179,11 @@ export async function saveToDrive({ id, output = 0, folder = null, name = null }
   else {
     const base = clientFolderId(g.client);
     if (!base) throw new StudioError(g.client === SCRATCH ? 'Images without a client need a folder to save to.' : `${g.client} has no Drive folder yet.`, g.client === SCRATCH ? 'Pass a folder link.' : `studio drive init ${g.client}`);
-    const savePath = teamConfig().google?.save_path ?? 'Studio';
-    parentId = (await ensurePath(base, `${savePath}/${g.project}`)).id;
+    parentId = await versionFolder(g, o.status);
   }
   const label = slugify([g.deliverable ?? g.project, g.concept].filter(Boolean).join(' ')).toUpperCase().replace(/-/g, '_');
-  const fileName = name ?? `${label}_v${g.version}${g.outputs.length > 1 ? `_${output + 1}` : ''}_${o.status === 'approved' ? 'APPROVED_' : ''}${id.slice(-6)}${EXT[o.mime] ?? '.png'}`;
+  // No status in the name: the folder shows it, and the file moves when the status changes.
+  const fileName = name ?? `${label}_v${g.version}${g.outputs.length > 1 ? `_${output + 1}` : ''}_${id.slice(-6)}${EXT[o.mime] ?? '.png'}`;
   const description = [`stacked-studio ${id} output ${output}`, g.prompt ? `Prompt: ${g.prompt.slice(0, 1500)}` : null].filter(Boolean).join('\n');
   const up = await uploadPath(file, { parentId, name: fileName, mime: o.mime ?? 'image/png', description });
   const value = { drive_id: up.id, link: up.webViewLink ?? `https://drive.google.com/file/d/${up.id}/view`, folder_id: parentId, name: up.name };

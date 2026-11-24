@@ -163,3 +163,39 @@ entries:
     watch_out: Better built in layout (two images) than in one generation.
     search: ["{category} split screen campaign layout"]
     related: [motion.smear]
+  - id: placement.leaning
+    name: Leaning on an element
+    aliases: [lean against rock, propped up, resting against]
+    applies: [product, device]
+    prompt: "The product leans back noticeably against a large rock, its base set into the surface, its front and label still facing the camera."
+    use_when: "Outdoor and set-piece scenes where a natural element (rock, wall, driftwood, step) anchors one side of the frame. Breaks the stiffness of a lineup."
+    watch_out: "State which side the element is on and which way the product leans; too steep a lean turns the label away or reads as falling over."
+    search: ["{category} product leaning against rock beach", "{category} bottle propped against stone"]
+    related: [placement.dynamic-tilt, placement.asymmetric-anchor, surface.sand]
+  - id: placement.dynamic-tilt
+    name: Dynamic tilt
+    aliases: [rotated products, casual angles, not static, staggered rotation]
+    applies: [product, food_beverage]
+    prompt: "Each product at its own slight angle: one tilted slightly left, one tilted slightly right and turned a little towards the centre, the hero leaning back. Natural and casual, never stiff or lined up, every front still facing the camera."
+    use_when: "Groups of 2-4 where a lineup feels static. Pair with leaning or set-in-surface so the tilts are physically believable."
+    watch_out: "Give each product its own angle and direction in words; saying slightly tilted for all gives identical tilts. Keep turns small so labels stay readable, and write angles in words: numbers can end up printed on the packaging."
+    search: ["dynamic {category} product group composition", "{category} products tilted casual still life"]
+    related: [placement.leaning, placement.triangle-group, angle.low-hero]
+  - id: placement.set-in-surface
+    name: Set into the surface
+    aliases: [planted in sand, half buried, pushed into]
+    applies: [product]
+    prompt: "The product's base pushed a few centimetres into the sand at a slight angle, sand piled softly around it with a natural contact shadow."
+    use_when: "Sand, snow, soil, rice, powder: grounds the product so tilts look natural and stable."
+    watch_out: "Sinking too deep hides the lower label lines; say how much of the base is buried."
+    search: ["{category} product in sand beach", "bottle planted in sand"]
+    related: [surface.sand, placement.dynamic-tilt]
+  - id: placement.asymmetric-anchor
+    name: Asymmetric anchor
+    aliases: [element on one side, off-centre composition, rock on the left]
+    applies: [product, device, food_beverage]
+    prompt: "A large natural element fills the left third of the frame; the products sit just right of centre against it, open sky and sea on the right for depth and breathing room."
+    use_when: "Scenes with a strong set element (rock, plant, architecture). Gives depth and a natural reading direction."
+    watch_out: "Name the side explicitly and keep it when remaking a visual: models mirror compositions easily."
+    search: ["{category} product rock left composition beach", "asymmetric {category} product photography natural element"]
+    related: [placement.leaning, framing.shallow-depth]

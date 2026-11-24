@@ -2,7 +2,7 @@
 subjects:
   - id: product
     name: Product (packshot, still life, campaign hero)
-    focus: [angle.three-quarter, angle.low-hero, angle.top-down, placement.floating, placement.podium, placement.stepped-levels, placement.diagonal-cascade, placement.ingredient-story, light.backlit-glow, light.hard-sun, light.specular-strip, surface.water, surface.plaster, surface.fabric, motion.splash, motion.floating-ingredients, motion.smear, framing.negative-space]
+    focus: [angle.three-quarter, angle.low-hero, angle.top-down, placement.floating, placement.podium, placement.stepped-levels, placement.diagonal-cascade, placement.ingredient-story, light.backlit-glow, light.hard-sun, light.specular-strip, surface.water, surface.plaster, surface.fabric, motion.splash, motion.floating-ingredients, motion.smear, framing.negative-space, placement.leaning, placement.dynamic-tilt, placement.set-in-surface, placement.asymmetric-anchor]
     categories: [angle, placement, lighting, surface, motion, framing]
     search:
       - "{subject} product photography"

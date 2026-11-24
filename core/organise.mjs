@@ -104,7 +104,8 @@ export function desiredTree(client) {
       const base = folder ? `projects/${p.slug}/${folder}` : `projects/${p.slug}`;
       r.outputs.forEach((o, i) => {
         const name = `${label}_v${g.version}${r.outputs.length > 1 ? `_${i + 1}` : ''}_${g.id.slice(-6)}`;
-        put(`${base}/versions/${name}`, o.sha, o.mime);
+        // Rejected versions sit apart in versions/rejected/ (Drive: 02_Rejected); approved ones also go to final/.
+        put(`${base}/versions/${o.status === 'rejected' ? 'rejected/' : ''}${name}`, o.sha, o.mime);
         if (o.status === 'approved') put(`${base}/final/${name}`, o.sha, o.mime);
       });
     }
@@ -169,7 +170,7 @@ function pruneEmpty(dir) {
         const f = path.join(d, n);
         if (fs.statSync(f).isDirectory()) {
           walk(f);
-          if (!fs.readdirSync(f).length && /\/(versions|final|references|photos|cutouts|logos|unsorted|images|approved|deck)(\/|$)/.test(f)) fs.rmdirSync(f);
+          if (!fs.readdirSync(f).length && /\/(versions|final|rejected|references|photos|cutouts|logos|unsorted|images|approved|deck)(\/|$)/.test(f)) fs.rmdirSync(f);
         }
       }
     };

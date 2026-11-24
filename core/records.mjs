@@ -21,6 +21,27 @@ export function writeGeneration(rec) {
   return file;
 }
 
+// When the working deck renumbers its assets, projects/<p>/renumber.yaml maps old codes to new ones:
+//   { renumbers: [{ at: <iso date>, map: { APS008: APS007, ... }, ids: { <version id>: APS007 } }] }
+// Records stay as written; a version made before `at` is read with its code mapped (the original is
+// kept as deliverable_was). Several renumbers apply in order.
+function renumbersFor(file) {
+  const dir = path.dirname(path.dirname(path.dirname(file))); // …/projects/<p>
+  return readYaml(path.join(dir, 'renumber.yaml'), {})?.renumbers ?? [];
+}
+
+export function applyRenumber(g, renumbers) {
+  if (!g?.deliverable || !renumbers?.length) return g;
+  let code = g.deliverable;
+  for (const r of renumbers) {
+    if (r.ids?.[g.id]) code = r.ids[g.id]; // a version filed under the old code after the renumber
+    else if (String(g.created ?? '') < String(r.at) && r.map?.[code]) code = r.map[code];
+  }
+  return code === g.deliverable ? g : { ...g, deliverable: code, deliverable_was: g.deliverable };
+}
+
+const read = (file) => applyRenumber(readYaml(file, null), renumbersFor(file));
+
 const newestFirst = (a, b) => String(b.created ?? '').localeCompare(String(a.created ?? '')) || (a.id < b.id ? 1 : -1);
 
 // id -> file, filled lazily by scanning project folders.
@@ -42,7 +63,7 @@ export function findGeneration(id) {
     scan();
     file = index.get(id);
   }
-  return file ? readYaml(file, null) : null;
+  return file ? read(file) : null;
 }
 
 export function requireGeneration(id) {
@@ -61,7 +82,7 @@ export function listGenerations({ client, project, limit = 50, includeTests = tr
     const p = rel[rel.length - 4];
     if (client && c !== client) continue;
     if (project && p !== project) continue;
-    const g = readYaml(file, null);
+    const g = read(file);
     if (g && (includeTests || !g.is_test)) out.push(g);
   }
   return out.sort(newestFirst).slice(0, limit);

@@ -151,6 +151,10 @@ export async function startServer({ port = 4321, host = '127.0.0.1', open = true
       const b = await readBody(req);
       return send(res, 200, await runOp('review', { id: b.id, output: b.output ?? 0, action: b.action, note: b.note, value: b.value }));
     }
+    if (m === 'POST' && parts[0] === 'notes') {
+      const b = await readBody(req);
+      return send(res, 200, await runOp('review_notes', { client: b.client, project: b.project, deliverable: b.deliverable, action: b.action, change: b.change, from: b.from, index: b.index }));
+    }
     if (m === 'POST' && parts[0] === 'compare') {
       const b = await readBody(req);
       // Viewing a comparison records nothing; picking one records the comparison and the pick.

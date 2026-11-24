@@ -20,7 +20,7 @@ export const MIME = {
   '.webm': 'video/webm',
   '.pdf': 'application/pdf',
 };
-export const EXT = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/gif': '.gif', 'video/mp4': '.mp4', 'video/quicktime': '.mov', 'video/webm': '.webm', 'application/pdf': '.pdf' };
+export const EXT = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/gif': '.gif', 'video/mp4': '.mp4', 'video/quicktime': '.mov', 'video/webm': '.webm', 'application/pdf': '.pdf', 'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx', 'application/x-iwork-numbers-sffnumbers': '.numbers' };
 
 export const mimeFromName = (name) => MIME[path.extname(name).toLowerCase()] ?? null;
 export const isImage = (mime) => /^image\//.test(mime ?? '');

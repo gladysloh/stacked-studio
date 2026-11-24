@@ -13,5 +13,6 @@ google:
   client_id: 1234567890-abc.apps.googleusercontent.com
   client_secret: GOCSPX-replace-me
   root_folder_id: 0AAbCdEfGhIjKUk9PVA      # the Shared Drive (or a folder in it): where the studio writes
-  save_path: Studio                         # saved images go to <client>/Studio/<project>/
+  # Each project gets folders in the client's Drive folder. Rename them here if you like (keys stay):
+  # project_folders: { working: 01_Generated, rejected: 02_Rejected, final: 03_Final, decks: 04_Review Decks }
   # scratch_folder_id: …                    # where images without a client are saved
