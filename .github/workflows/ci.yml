@@ -1,0 +1,30 @@
+name: ci
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: [22, 24]
+    runs-on: ${{ matrix.os }}
+    env:
+      STACKED_KEYCHAIN: file
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      # The same setup a teammate runs, from a clean checkout.
+      - run: ./setup.sh
+      # A second run must change nothing.
+      - run: ./setup.sh --json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const r=JSON.parse(s);const c=r.steps.filter(x=>x.status==='done');if(c.length){console.error('second run changed:',c);process.exit(1)}})"
+      - run: npm test
+      - run: npm run check:private
+  media:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: cd py && uv sync --extra media && uv run --group dev pytest -q

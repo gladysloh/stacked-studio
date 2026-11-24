@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workbench</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#/">Workbench</a>
+    <select id="client" aria-label="Client"></select>
+    <select id="project" aria-label="Project"></select>
+    <span class="grow"></span>
+    <span id="meta" class="muted"></span>
+  </header>
+  <main id="view"></main>
+  <aside id="runs" aria-live="polite"></aside>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

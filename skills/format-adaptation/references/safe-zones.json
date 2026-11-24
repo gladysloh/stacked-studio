@@ -1,0 +1,117 @@
+{
+  "_comment": "Platform-driven safe zones for adapt QA. Client-agnostic — keyed by adapt-size FRAME NAME (matches the frame names in the brand Figma template / adapt set). Margins are in px: critical content must stay inside the rect [l, t] .. [W-r, H-b]. Unknown sizes fall back to _default (percentage of the frame's shorter edge).",
+  "_build_rule": "The safe box is a LAYOUT CONTAINER, not just a QA check. When building any adapt from a KV: the background bleeds full-frame, but ALL other content (logo, headline, cards, chips, labels, CTA, legal, pills) is laid out INSIDE the safe box. Scale the content block to fit the box and centre it. Built this way, adapts are born compliant and the audit below is only a backstop.",
+  "_critical_elements": [
+    "logo-pill",
+    "headline",
+    "subhead",
+    "cta",
+    "legal",
+    "vertical-pill",
+    "mas-disclaimer",
+    "chip-*",
+    "label"
+  ],
+  "_audit_notes": "For TEXT nodes the horizontal check is alignment-aware: LEFT-aligned → check left edge only, RIGHT → right only, CENTER/JUSTIFIED → skip horizontal (the box is usually wider than the centred glyphs). Vertical (top/bottom) is always checked. Non-text critical nodes (logo-pill, cta, pills) check all four edges. Also flag overlaps between critical elements (e.g. legal vs mas-disclaimer).",
+  "_default": {
+    "type": "percent",
+    "l": 5,
+    "r": 5,
+    "t": 5,
+    "b": 5
+  },
+  "_aliases_comment": "Brief / jobs.json adapt-size names (semantic: paid-social / display) that map onto the platform-keyed sizes below. Lets a brief use semantic names while safe-zone lookups resolve to the canonical entry. Consumers resolve `aliases[size] ?? size` before reading `sizes`.",
+  "aliases": {
+    "PAID_SOCIAL_1_1": "INSTAGRAM_POST",
+    "PAID_SOCIAL_4_5": "INSTAGRAM_PORTRAIT",
+    "PAID_SOCIAL_9_16": "INSTAGRAM_STORY",
+    "DISPLAY_300_250": "MEDIUM_RECTANGLE",
+    "DISPLAY_728_90": "LEADERBOARD",
+    "DISPLAY_320_50": "MOBILE_BANNER",
+    "DISPLAY_160_600": "SKYSCRAPER"
+  },
+  "sizes": {
+    "INSTAGRAM_POST": {
+      "w": 1080,
+      "h": 1080,
+      "l": 54,
+      "r": 54,
+      "t": 54,
+      "b": 54
+    },
+    "INSTAGRAM_PORTRAIT": {
+      "w": 1080,
+      "h": 1350,
+      "l": 54,
+      "r": 54,
+      "t": 90,
+      "b": 90
+    },
+    "INSTAGRAM_STORY": {
+      "w": 1080,
+      "h": 1920,
+      "l": 64,
+      "r": 64,
+      "t": 250,
+      "b": 320,
+      "note": "top + bottom reserved for IG / TikTok / Reels UI (profile, caption, CTA, swipe-up). Keep critical content within the y250–1600 band."
+    },
+    "MEDIUM_RECTANGLE": {
+      "w": 300,
+      "h": 250,
+      "l": 8,
+      "r": 8,
+      "t": 8,
+      "b": 8
+    },
+    "LEADERBOARD": {
+      "w": 728,
+      "h": 90,
+      "l": 6,
+      "r": 6,
+      "t": 6,
+      "b": 6
+    },
+    "MOBILE_BANNER": {
+      "w": 320,
+      "h": 50,
+      "l": 5,
+      "r": 5,
+      "t": 5,
+      "b": 5
+    },
+    "SKYSCRAPER": {
+      "w": 160,
+      "h": 600,
+      "l": 8,
+      "r": 8,
+      "t": 8,
+      "b": 8
+    },
+    "ON_SITE_BANNER": {
+      "w": 1200,
+      "h": 400,
+      "l": 24,
+      "r": 24,
+      "t": 24,
+      "b": 24
+    },
+    "LANDING_PAGE_HERO": {
+      "w": 1920,
+      "h": 1080,
+      "l": 48,
+      "r": 48,
+      "t": 48,
+      "b": 48,
+      "note": "also keep critical content centred horizontally — landing heroes side-crop on narrow viewports."
+    },
+    "EDM_HERO": {
+      "w": 600,
+      "h": 400,
+      "l": 24,
+      "r": 24,
+      "t": 24,
+      "b": 24
+    }
+  }
+}

@@ -1,0 +1,17 @@
+# team.yaml: shared settings for everyone on the team. Zip it and share it privately.
+# Never put API keys here: each person adds their own with `studio keys set gemini`.
+name: Our Studio
+
+defaults:
+  image_provider: gemini        # gemini | fal
+  image_model: gemini-3.1-flash-image
+  daily_cap_usd: 10             # per person; anyone can lower their own
+  aspect: "4:5"
+
+google:
+  # From the "Desktop app" OAuth client (docs/google-setup.md, step 4). Not an API key.
+  client_id: 1234567890-abc.apps.googleusercontent.com
+  client_secret: GOCSPX-replace-me
+  root_folder_id: 0AAbCdEfGhIjKUk9PVA      # the Shared Drive (or a folder in it): where the studio writes
+  save_path: Studio                         # saved images go to <client>/Studio/<project>/
+  # scratch_folder_id: …                    # where images without a client are saved

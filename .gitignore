@@ -1,0 +1,33 @@
+node_modules/
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+
+# PRIVATE: client data, the team pack and every cache. Never published.
+/clients/
+/team/
+/.cache/
+*.zip
+
+# Private notes and the private-name list used by check-private.
+.internal/
+
+# Databases and secrets never live in the repo.
+*.db
+*.db-shm
+*.db-wal
+secrets.json
+credentials.json
+token.json
+
+# Python media pack environment.
+py/.venv/
+__pycache__/
+*.pyc
+
+# Made by setup (links to skills/ and pipelines/), and personal agent settings.
+.claude/skills/
+.claude/settings.local.json
+.claude/agents/

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "stacked-studio": {
+      "command": "node",
+      "args": ["bin/studio.mjs", "mcp"]
+    }
+  }
+}
