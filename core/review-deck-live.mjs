@@ -38,7 +38,7 @@ export function sectionHash(section) {
  * Returns { steps: [{ key, hash, reuse: [ids], create: n, drop: [ids], slides }], removed: [ids],
  * unchanged: [keys], migrate: bool }.
  */
-export function planDeck(sections, state, existingIds, { dirty = [] } = {}) {
+export function planDeck(sections, state, existingIds, { dirty = [], renames = {} } = {}) {
   const exists = new Set(existingIds);
   const isDirty = new Set(dirty); // slides whose studio drawing is gone (the file was overwritten)
   const saved = state?.sections ?? {};
@@ -47,12 +47,18 @@ export function planDeck(sections, state, existingIds, { dirty = [] } = {}) {
   const steps = [];
   const unchanged = [];
   const seen = new Set();
+  // A renamed asset (renumber.yaml: APS008 → APS007) keeps its slides, so comments stay on them.
+  // A key that was renamed away no longer owns its old slides, even if a new asset now has that code.
+  const from = Object.fromEntries(Object.entries(renames).map(([o, n]) => [n, o]));
+  const owner = (key) => (from[key] && saved[from[key]] ? from[key] : renames[key] ? null : key);
   for (const sec of sections) {
     seen.add(sec.key);
     const hash = sectionHash(sec);
-    const prev = saved[sec.key];
+    const own = owner(sec.key);
+    if (own) seen.add(own);
+    const prev = own ? saved[own] : null;
     const live = (prev?.slides ?? []).filter((id) => exists.has(id));
-    if (!migrate && prev && prev.hash === hash && !live.some((x) => isDirty.has(x)) && live.length === prev.slides.length && live.length === sec.slides.length && sameVersion) {
+    if (!migrate && prev && own === sec.key && prev.hash === hash && !live.some((x) => isDirty.has(x)) && live.length === prev.slides.length && live.length === sec.slides.length && sameVersion) {
       unchanged.push(sec.key);
       steps.push({ key: sec.key, hash, keep: live });
       continue;
@@ -321,7 +327,7 @@ async function imageUrls(images, folder) {
  * Brings the Slides file `id` in line with `sections`. `state` is the saved links.review_deck.live.
  * Returns { state, slides, changed: [keys], unchanged: [keys], removed: n, migrated }.
  */
-export async function updateLive(id, sections, state, { tempFolder }) {
+export async function updateLive(id, sections, state, { tempFolder, renames = {}, renumbers = [] }) {
   const { gfetch, hosts, batch } = await api();
   const pres = await gfetch(`${hosts().slides}/presentations/${id}`);
   const current = pres.slides ?? [];
@@ -330,7 +336,7 @@ export async function updateLive(id, sections, state, { tempFolder }) {
   const tracked = new Set(Object.values(state?.sections ?? {}).flatMap((v) => v.slides ?? []));
   const dirty = current.filter((s) => tracked.has(s.objectId) && !(s.pageElements ?? []).some((e) => ours(e.objectId))).map((s) => s.objectId);
   const dirtySet = new Set(dirty);
-  const plan = planDeck(sections, state, current.map((s) => s.objectId), { dirty });
+  const plan = planDeck(sections, state, current.map((s) => s.objectId), { dirty, renames });
   const requests = [];
 
   // First in-place update of a deck that was written as a whole file: its slides are adopted by
@@ -378,7 +384,8 @@ export async function updateLive(id, sections, state, { tempFolder }) {
   try {
     const byId = new Map(current.map((s) => [s.objectId, s]));
     const order = [];
-    const next = { version: LIVE_VERSION, sections: {} };
+    // Renumbers already applied to this deck's slides, so they're never applied twice.
+    const next = { version: LIVE_VERSION, sections: {}, renumbers_applied: [...new Set([...(state?.renumbers_applied ?? []), ...renumbers])] };
     for (const st of plan.steps) {
       if (st.keep) {
         order.push(...st.keep);

@@ -87,3 +87,48 @@ test('element ids are stable, so unchanged elements are skipped on redraw', asyn
   assert.equal(r.filter((q) => q.createImage).length, 0);
   assert.equal(r.filter((q) => q.createShape).length, 2);
 });
+
+test('plan: a renamed asset keeps its slides; in a swap each code takes the right old slides', () => {
+  const a7 = sec('asset:A7', [text('A7 old')]);
+  const a8 = sec('asset:A8', [text('A8 old')]);
+  const state = { version: LIVE_VERSION, sections: { 'asset:A7': { hash: sectionHash(a7), slides: ['s7'] }, 'asset:A8': { hash: sectionHash(a8), slides: ['s8'] } } };
+  // A8 → A7 and A7 → A6: the old A7 slide now belongs to A6, the old A8 slide to A7.
+  const now = [sec('asset:A6', [text('A6')]), sec('asset:A7', [text('A7')])];
+  const p = planDeck(now, state, ['s7', 's8'], { renames: { 'asset:A7': 'asset:A6', 'asset:A8': 'asset:A7' } });
+  const by = Object.fromEntries(p.steps.map((s) => [s.key, s.reuse]));
+  assert.deepEqual(by['asset:A6'], ['s7']);
+  assert.deepEqual(by['asset:A7'], ['s8']);
+  assert.deepEqual(p.removed, []);
+  // Without the rename, A7's code would reuse the wrong slide and A8's slide would be deleted.
+  const plain = planDeck(now, state, ['s7', 's8']);
+  assert.deepEqual(plain.removed, ['s8']);
+});
+
+test('deck renames come from renumber.yaml, collapse chains, and are applied once', async () => {
+  const { tempStudio } = await import('./helpers.mjs');
+  const t = tempStudio();
+  const ws = await import('../core/workspace.mjs');
+  const fsu = await import('../core/fsutil.mjs');
+  const path = await import('node:path');
+  const { deckRenames } = await import('../core/review-deck.mjs');
+  const slug = ws.createClient('Renameco');
+  const p = ws.ensureProject(slug, 'Spring');
+  fsu.writeYamlAtomic(path.join(t.ws, 'clients', slug, 'projects', p, 'renumber.yaml'), {
+    renumbers: [
+      { at: '2026-01-01T00:00:00Z', map: { A3: 'A2' } },
+      { at: '2026-02-01T00:00:00Z', map: { A2: 'A1', A9: 'A8' } },
+    ],
+  });
+  const live = { version: LIVE_VERSION, sections: {} };
+  const r = deckRenames(slug, p, live);
+  assert.equal(r.renames['asset:A3'], 'asset:A1'); // A3 → A2 → A1
+  assert.equal(r.renames['asset:A9'], 'asset:A8');
+  assert.equal(r.renumbers.length, 2);
+  // Once applied, the same renumbers are skipped; a deck without saved state gets none.
+  assert.deepEqual(deckRenames(slug, p, { ...live, renumbers_applied: r.renumbers }).renames, {});
+  assert.deepEqual(deckRenames(slug, p, null).renames, {});
+  // A deck last drawn after both renumbers already uses the new codes.
+  assert.deepEqual(deckRenames(slug, p, live, '2026-03-01T00:00:00Z').renames, {});
+  assert.deepEqual(Object.keys(deckRenames(slug, p, live, '2026-01-15T00:00:00Z').renames), ['asset:A2', 'asset:A9']);
+  t.cleanup();
+});

@@ -469,7 +469,7 @@ async function chosenSceneSlide(look, meta, dir, codes) {
   const el = assetHeader(a, 'Chosen scene');
   el.push(T(0.3, 0.84, 9.4, 0.22, 'One scene for every asset in this group, so rocks, sand, sea and light stay consistent.', { size: 6.5, color: GREY }));
   const left = [{ text: 'THE SCENE', size: 6, color: GREY, bold: true }, { text: look.scene_name, size: 10, bold: true }, { text: ' ', size: 5 }, { text: 'KEYWORDS', size: 6, color: GREY, bold: true }];
-  for (const k of look.scene_keywords ?? []) left.push({ text: k, size: 8.5, bold: true, color: '1F7A80' });
+  for (const k of [].concat(look.scene_keywords ?? []).flatMap((x) => String(x).split(/\s*,\s*/)).filter(Boolean)) left.push({ text: k, size: 8.5, bold: true, color: '1F7A80' });
   el.push(T(0.3, 1.15, 2.55, 4.05, left));
   // Images, same height, between the two columns.
   const imgs = (look.scene_images ?? []).slice(0, 2).map((r) => boardRef(r, dir)).filter(Boolean);
@@ -675,6 +675,30 @@ export async function buildReviewDeck(client, project, { only, cover = null } = 
 }
 
 /**
+ * Asset codes renamed since this deck was last drawn (renumber.yaml entries it hasn't applied), as
+ * section keys: { renames: { "asset:APS008": "asset:APS007" }, renumbers: [<at>…] }. Chains
+ * (A → B, then B → C) collapse to A → C. Only renumbers after `since` (when the deck was last drawn)
+ * count: a deck drawn after a renumber already uses the new codes. A deck with no saved state adopts
+ * slides by code instead.
+ */
+export function deckRenames(client, project, live, since = null) {
+  if (!live?.sections) return { renames: {}, renumbers: [] };
+  const done = new Set(live.renumbers_applied ?? []);
+  const list = (readYaml(path.join(clientDir(client), 'projects', project, 'renumber.yaml'), {})?.renumbers ?? []).filter((r) => r?.at && !done.has(String(r.at)) && (!since || String(r.at) > String(since))).sort((a, b) => String(a.at).localeCompare(String(b.at)));
+  let codes = {}; // old code → current code
+  for (const r of list) {
+    const map = Object.fromEntries(Object.entries(r.map ?? {}).map(([o, n]) => [String(o).toUpperCase(), String(n).toUpperCase()]));
+    const next = {};
+    for (const [o, n] of Object.entries(codes)) next[o] = map[n] ?? n;
+    for (const [o, n] of Object.entries(map)) if (!Object.values(codes).includes(o) && !(o in next)) next[o] = n;
+    codes = next;
+  }
+  const renames = {};
+  for (const [o, n] of Object.entries(codes)) if (o !== n) renames[`asset:${o}`] = `asset:${n}`;
+  return { renames, renumbers: list.map((r) => String(r.at)) };
+}
+
+/**
  * Writes the review deck into a Google Slides file (the same file each time) in the project's review
  * folder. With `deck`, uses that file and remembers it; otherwise the one remembered in project.yaml.
  */
@@ -710,7 +734,7 @@ export async function publishReviewDeck(client, project, { deck = null, only, co
   } else {
     const { updateLive } = await import('./review-deck-live.mjs');
     const built = await buildSections(client, project, { only, cover: coverSha, shortlist: prev.shortlist ?? null });
-    const r = await updateLive(id, built.sections, prev.live, { tempFolder: decksFolder });
+    const r = await updateLive(id, built.sections, prev.live, { tempFolder: decksFolder, ...deckRenames(client, project, prev.live, prev.updated) });
     live = r.state;
     result = { mode: 'update', slides: r.slides, data: built.data, changed: r.changed, unchanged: r.unchanged, removed: r.removed, migrated: r.migrated };
   }

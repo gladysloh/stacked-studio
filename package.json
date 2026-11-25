@@ -14,7 +14,8 @@
     "setup": "node scripts/setup.mjs",
     "doctor": "node bin/studio.mjs doctor",
     "test": "node --test --test-concurrency=1 \"test/*.test.mjs\"",
-    "check:private": "sh scripts/check-private.sh"
+    "check:private": "sh scripts/check-private.sh",
+    "sample:review-deck": "node scripts/review-deck-sample.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

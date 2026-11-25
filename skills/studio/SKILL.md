@@ -17,6 +17,7 @@ Creative work is not a line. Don't push anyone through research, a brief or conc
 | A prompt or a clear picture in mind | `image-generate` |
 | An image and a change ("softer light", "swap the background") | `image-edit` |
 | Several versions to choose between | `compare-and-select` |
+| The review deck: update it, a shortlist, comments under images, before/after, a new slide layout | `review-deck` |
 | A product that must look exactly right | `product-shot` |
 | A reference image to borrow angle/light/framing from | `reference-decoding` → `image-generate` |
 | A brief (PDF, deck, doc, pasted text) | `brief-intake` |
@@ -64,34 +65,7 @@ For deck deliverables, every new image is made **fresh** with `image_generate`, 
 Write a new prompt from scratch only for a new direction, or when the person asks for one. Use `image_edit` only when the person explicitly says to edit that image.
 
 ## Review deck
-Each project has a review deck in its Drive folder (`04_Review Decks`): one slide per asset with the current working-deck visual and every version in order, labelled with what changed, the date, model and status, next to the creative idea and open comments. After making or reviewing versions, run `drive_push_versions` then `review_deck` (no link needed after the first time). To free disk space, `prune_rejected` deletes the local copies of rejected versions once Drive holds them (run with `dry_run` first and say what will go). Rejected versions never appear in the review deck (they stay in history and in `02_Rejected` on Drive); the overview only counts them. The deck is updated in place: only sections (cover, overview, each asset) whose content changed are redrawn, on the same slides, so comments stay attached and slides or shapes people add by hand are kept. Each slide's footer date is when it was last redrawn. Rules that protect comments:
-- **Never use `rebuild: true`** unless the person asks for it by name: it replaces the whole file, and every comment loses its place.
-- Comments are attached to elements: unchanged elements keep their ids, and images carry their identity in their alt text, so a redraw keeps (and moves) the same image. Don't work around this by deleting or recreating slides or images yourself.
-- **`links.review_deck.paused: true`** in `project.yaml` stops all updates to that file. Set it when the person says not to touch the deck; only they lift it. Pointing `review_deck` at a new file (`deck: <link>`) starts that file fresh.
-- **Shortlist:** `links.review_deck.shortlist: { <code>: ["<version id>:<output>", …] }` shows only those versions of each asset, one slide per pick: the image large on the left, then its comments as short points. Write the points in deliverable.yaml `selected: [{ version: "<id end>:<output>", title?, notes: ["…"] }]`: only the comments made on that image, one change per point, in simple plain English (fix typos, no slang, no names, no "@"). `title` defaults to "Selected" (e.g. "Second option").
-- **Before / after slide:** deliverable.yaml `compare: [{ name, note, before: "<id>:<out>", after: ["<id>:<out>", …], edits: { "<id>:<out>": ["…"] } }]`. The preferred image sits large on the left, the options in a grid. Under each option, `edits` lists what changed from the preferred image's prompt: short points with the prompt's own words (e.g. "Warm golden-brown limestone"), one change per point. Keep the full asset list next to it (`assets_before_shortlist`) so it can be restored.
-- **Never post, resolve or delete comments** on a deck without asking first: comments are posted in the person's name and the team sees them. Write mentions as "(to <name>)", never an @email, so nobody is emailed twice.
-- **Several sessions:** each MCP server loads the studio code once. After changing studio code, ask the person to reconnect `stacked-studio` (`/mcp`) in every other session that uses it; a stale server can overwrite a deck with old logic.
-
-**Changes requested:** the deck shows a short summary of what needs to change, grouped by date, instead of raw comments. You write it: after re-syncing the working deck, read every comment and reply for the asset (open and resolved) and update `review_notes` in its `deliverable.yaml`:
-```yaml
-review_notes:
-  - { date: 2026-11-24, change: "Make the beach feel more Southeast Asian", from: "<first name>" }
-  - { date: 2026-11-20, change: "Rocks look too smooth: make them more realistic", from: "<first name>", done: true }
-```
-To give each direction its own slide (e.g. "Water stream" and "Dunked"), add `review_groups: [{ name, versions: [<version id or its last characters>] }]` to the same file; versions in no group go on an "Other versions" slide.
-
-**Scene guide (shared world):** a project look (`projects/<p>/looks/<name>.yaml`, with `applies_to: [codes]`) also gets a "Scene guide" section right after the overview: `scene:` (one paragraph describing sand, rocks, sea and setting), `light:`, a swatch per element (`sky`, `sea`, `sand`, `rocks`, … each `{ words, hex }`), and optional `options:` (same shape as a concept board) shown as lettered "Scene options" so the team can pick one world. Once they pick, record it in the look: `scene_name`, `scene` (one plain paragraph), `scene_keywords` (their words, short), `scene_images` (the picked images), and move the other options to `archived_options` (kept, not shown). The deck then shows one "Chosen scene" slide: name, keywords, images and swatches. Add an element colour for what defines the scene (e.g. `rocks: { words, hex }`), with `only: [codes]` when some assets in the group don't have that element (a water-only shot has no rocks or sand). Don't change the group's `light` to match a scene image if an asset's agreed light differs (e.g. the sun in a specific corner): ask, or keep it per asset.
-
-**Concept board (before generating):** when the person wants to agree directions first, add `concept_board` to the asset's `deliverable.yaml`; the deck shows it as "Concept board" slide(s) ahead of the versions, three directions per slide, each tagged A, B, C… so people can comment by letter:
-```yaml
-concept_board:
-  - { name: "Bridged over the cap", idea: "Low angle on a sand crest; open stick resting across its upright cap…", refs: [<sha>, "references/x.png"] }
-  - { name: "Overhead prism", idea: "…", refs: [<sha>], verdict: liked }   # liked | maybe | not_for_us, from their comments
-```
-Up to three reference images per direction (moodboard shas or paths relative to the deliverable folder). Generate only the directions they pick.
-
-One instruction per line, in plain words, no @mentions or emails, the date the comment or reply was made. Mark `done: true` when the comment is resolved or a version has addressed it. Without notes, the deck falls back to the open comments.
+The project's review deck (Google Slides, updated in place so comments stay attached) has its own skill: `review-deck`. Read it before running `review_deck`, writing changes requested or comment points, shortlisting, or changing a slide layout. In short: run `drive_push_versions` then `review_deck` after making or reviewing versions; never `rebuild: true` unless asked; respect `paused`; never post or resolve comments without asking.
 
 ## What the person tells you about people and light
 Casting and lighting preferences learnt while working (e.g. the model's look, how soft or strong the shadows should be) go into `brand/notes/` as a draft, and you read them before generating people. Only the person promotes a note to `brand/brand.md`.
