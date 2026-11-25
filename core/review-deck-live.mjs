@@ -412,15 +412,20 @@ export async function updateLive(id, sections, state, { tempFolder }) {
     }
     const gone = [...drop].filter((d) => !order.includes(d));
     for (const d of gone) requests.push({ deleteObject: { objectId: d } });
-    // Studio slides in section order at the top; slides a person added keep their order after them.
-    // updateSlidesPosition moves one slide at a time here, against a simulated arrangement.
+    // Slides already in the file stay where they are (people reorder decks by hand). Only new slides
+    // are placed: right after the slide that comes before them in section order (or first).
+    // updateSlidesPosition moves one slide at a time, against a simulated arrangement.
     const arr = [...current.map((s) => s.objectId), ...order.filter((x) => !byId.has(x))].filter((x) => !gone.includes(x));
     order.forEach((sid, i) => {
+      if (byId.has(sid) && !plan.migrate) return;
+      const prev = order.slice(0, i).reverse().find((x) => arr.includes(x));
+      const want = prev ? arr.indexOf(prev) + 1 : 0;
       const p = arr.indexOf(sid);
-      if (p === i) return;
-      requests.push({ updateSlidesPosition: { slideObjectIds: [sid], insertionIndex: i } });
+      if (p === want) return;
+      const at = p < want ? want - 1 : want;
+      requests.push({ updateSlidesPosition: { slideObjectIds: [sid], insertionIndex: want } });
       arr.splice(p, 1);
-      arr.splice(i, 0, sid);
+      arr.splice(at, 0, sid);
     });
     if (requests.length) await batch(id, requests);
     return { state: next, slides: arr.length, changed: todo.map((t) => t.key), unchanged: plan.unchanged, removed: gone.length, migrated: plan.migrate };

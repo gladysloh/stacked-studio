@@ -209,7 +209,26 @@ export function reviewDeckData(client, project, { only, showRejected = false, sh
       for (let i = versions.length - 1; i >= 0; i--) if (!keep.has(`${versions[i].id}:${versions[i].output}`)) versions.splice(i, 1);
     }
     const open = comments.filter((x) => !x.resolved && String(x.asset_code ?? '').toLowerCase() === d.code.toLowerCase());
+    // Before / after slides: deliverable.yaml compare: [{ name?, before: "<id>:<out>", after: ["<id>:<out>", …], note? }]
+    const findOut = (ref) => {
+      const [id, out = '0'] = String(ref).split(':');
+      const g = mine.find((x) => x.id === id || x.id.endsWith(id));
+      const o = g ? withReview(g).outputs[Number(out)] : null;
+      return o && mediaPath(o.sha) ? { sha: o.sha, width: o.width, height: o.height, label: `${g.id.slice(-6)}${g.outputs.length > 1 ? ` · ${Number(out) + 1}` : ''}`, status: o.status, date: day(g.created), model: [MODEL[g.model] ?? g.model, g.params?.size].filter(Boolean).join(' '), note: g.instruction ?? null } : null;
+    };
+    const compares = (meta.compare ?? [])
+      .map((c) => ({ name: c.name ?? 'Before and after', note: c.note ?? null, before: findOut(c.before), after: (Array.isArray(c.after) ? c.after : [c.after]).map((r) => { const o = findOut(r); return o && { ...o, edits: c.edits?.[r] ?? null }; }).filter(Boolean) }))
+      .filter((c) => c.before && c.after.length);
+    // Selected versions (shortlist) get one slide each: the image, then short comments in plain words.
+    // deliverable.yaml selected: [{ version: "<id>:<out>", title?, notes: ["…"] }]
+    const notesFor = (v) => (meta.selected ?? []).find((s) => {
+      const [id, out = '0'] = String(s.version ?? '').split(':');
+      return id && v.id.endsWith(id) && Number(out) === v.output;
+    });
     assets.push({
+      shortlisted: Boolean(pick),
+      selected: pick ? versions.map((v) => ({ ...v, title: notesFor(v)?.title ?? null, points: notesFor(v)?.notes ?? null })).sort((x, y) => pick.indexOf(`${x.id}:${x.output}`) - pick.indexOf(`${y.id}:${y.output}`)) : [],
+      compares,
       board: pick ? [] : board, // a shortlist shows only the chosen versions
       changes_view: changesFor(meta, open),
       groups: (meta.review_groups ?? []).filter((x) => x?.name && Array.isArray(x.versions)),
@@ -272,9 +291,97 @@ export function thumbnailer() {
  * direction its own slide(s), each starting with the current deck visual. Versions in no group go on
  * a final "Other versions" slide.
  */
+/**
+ * Before / after: the preferred (earlier) version large on the left, uncropped; the new options in a
+ * grid beside it, wrapping into rows as more are added.
+ */
+async function compareSlide(a, c, meta) {
+  const el = assetHeader(a, c.name);
+  el.push(T(0.3, 0.84, 9.4, 0.22, c.note ?? 'The preferred version, then the new options beside it.', { size: 6.5, color: GREY }));
+  const ar = (it) => (it.width && it.height ? it.width / it.height : 0.8);
+  const top = 1.15;
+  const bottom = 5.2;
+  const caption = (it, title, x, y, w, small) => {
+    el.push(T(x - 0.04, y, Math.max(w, 1.3) + 0.08, 0.2, `${title}  ·  ${it.label}`, { size: small ? 6.5 : 8, bold: true }));
+    el.push(...pill(x, y + 0.22, it.status));
+    if (it.date || it.model) el.push(T(x + 0.9, y + 0.195, Math.max(w - 0.9, 0.8), 0.2, [it.date, it.model].filter(Boolean).join(' · '), { size: 5.5, color: GREY }));
+  };
+  // Preferred, large on the left.
+  const capH = 0.5;
+  const ph = bottom - top - capH;
+  const pw = ph * ar(c.before);
+  const px = 0.35;
+  el.push(await imageEl(c.before.sha, px, top, pw, ph, null));
+  caption(c.before, 'Preferred', px, top + ph + 0.06, pw, false);
+  el.push(R(px + pw + 0.25, top, 0.005, bottom - top, { fill: LINE }));
+  // Options grid on the right: pick the column count that gives the largest images.
+  const gx = px + pw + 0.45;
+  const gw = 9.65 - gx;
+  const gh = bottom - top;
+  const n = c.after.length;
+  const gap = 0.2;
+  // Title and pill, then what was changed: one short point per line (compare edits), or the note.
+  const lines = Math.max(2, ...c.after.map((it) => it.edits?.length ?? 0));
+  const cellCap = 0.5 + lines * 0.13;
+  let best = null;
+  for (let cols = 1; cols <= Math.min(n, 4); cols++) {
+    const rows = Math.ceil(n / cols);
+    const wMax = (gw - gap * (cols - 1)) / cols;
+    const hMax = (gh - rows * cellCap - gap * (rows - 1)) / rows;
+    const h = Math.min(hMax, wMax / ar(c.after[0]), ph * 0.68); // the preferred image stays the largest
+    if (h > 0 && (!best || h > best.h)) best = { cols, rows, h };
+  }
+  const { cols, h } = best ?? { cols: n, h: 1 };
+  for (const [k, it] of c.after.entries()) {
+    const w = h * ar(it);
+    const x = gx + (k % cols) * ((gw - gap * (cols - 1)) / cols + gap);
+    const y = top + Math.floor(k / cols) * (h + cellCap + gap);
+    el.push(await imageEl(it.sha, x, y, w, h, null));
+    caption(it, n > 1 ? `Option ${k + 1}` : 'Updated', x, y + h + 0.06, w, true);
+    if (it.edits?.length) el.push(T(x - 0.04, y + h + 0.47, Math.max(w, 1.3) + 0.08, lines * 0.13 + 0.05, it.edits.map((e) => ({ text: `–  ${clip(e, 70)}`, size: 6 }))));
+    else if (it.note) el.push(T(x - 0.04, y + h + 0.47, w + 0.08, 0.3, clip(it.note, 110), { size: 5.5, color: GREY }));
+  }
+  el.push(...footer(meta));
+  return { background: 'FFFFFF', elements: el };
+}
+
+/** One selected version: the image large on the left, its comments as short points beside it. */
+async function selectedSlide(a, v, groupName, meta) {
+  const el = assetHeader(a, groupName);
+  const ar = v.width && v.height ? v.width / v.height : 0.8;
+  const top = 0.98;
+  const h = 4.17;
+  const w = Math.min(h * ar, 5.2);
+  el.push(await imageEl(v.sha, 0.35, top, w, w / ar, null));
+  const x = 0.35 + w + 0.45;
+  const cw = 9.65 - x;
+  el.push(T(x - 0.04, top - 0.04, cw, 0.4, v.title ?? 'Selected', { size: 16, bold: true }));
+  el.push(...pill(x, top + 0.45, v.status));
+  el.push(T(x + 0.92, top + 0.425, cw - 0.92, 0.2, [v.label, v.date, v.model].filter(Boolean).join('  ·  '), { size: 6, color: GREY }));
+  el.push(R(x, top + 0.82, cw, 0.005, { fill: LINE }));
+  let points = v.points;
+  if (!points?.length) {
+    const cv = a.changes_view;
+    points = cv.kind === 'summary' ? (cv.groups[0]?.items ?? []).filter((i) => !i.done).map((i) => i.change) : a.comments.map((c) => noMentions(c.body));
+  }
+  el.push(T(x - 0.04, top + 0.95, cw, 0.22, 'COMMENTS', { size: 6.5, color: GREY, bold: true }));
+  const list = points.length ? points.slice(0, 8).flatMap((p, i) => [...(i ? [{ text: ' ', size: 5 }] : []), { text: `•  ${clip(p, 160)}`, size: 11 }]) : [{ text: 'No changes. Keep as it is.', size: 11, color: GREY }];
+  el.push(T(x - 0.04, top + 1.2, cw, 5.15 - top - 1.2, list));
+  el.push(...footer(meta));
+  return { background: 'FFFFFF', elements: el };
+}
+
 async function assetSlides(a, meta, thumbs, pageNo) {
+  const compares = [];
+  for (const c of a.compares ?? []) compares.push(await compareSlide(a, c, meta));
+  if (a.shortlisted) {
+    const match = (v, ref) => v.id === ref || v.id.endsWith(String(ref));
+    const out = [];
+    for (const v of a.selected) out.push(await selectedSlide(a, v, a.groups?.find((g) => g.versions.some((r) => match(v, r)))?.name ?? null, meta));
+    return [...out, ...compares];
+  }
   const slides = a.board?.length ? await conceptSlides(a, meta, thumbs, pageNo) : [];
-  if (!a.groups?.length) return [...slides, ...(await assetGroupSlides(a, a.versions, null, meta, thumbs, pageNo + slides.length))];
+  if (!a.groups?.length) return [...slides, ...(await assetGroupSlides(a, a.versions, null, meta, thumbs, pageNo + slides.length)), ...compares];
   const match = (v, ref) => v.id === ref || v.id.endsWith(String(ref));
   const used = new Set();
   for (const g of a.groups) {
@@ -285,7 +392,7 @@ async function assetSlides(a, meta, thumbs, pageNo) {
   }
   const rest = a.versions.filter((v) => !used.has(v));
   if (rest.length) slides.push(...(await assetGroupSlides(a, rest, 'Other versions', meta, thumbs, pageNo + slides.length)));
-  return slides;
+  return [...slides, ...compares];
 }
 
 function assetHeader(a, subtitle) {
